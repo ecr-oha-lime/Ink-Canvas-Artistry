@@ -254,6 +254,7 @@ namespace Ink_Canvas
                 if (forceEraser) return;
                 inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
             }
+            BeginInkStraightenTracking(e.GetTouchPoint(inkCanvas).Position);
         }
 
         public double GetTouchBoundWidth(TouchEventArgs e)

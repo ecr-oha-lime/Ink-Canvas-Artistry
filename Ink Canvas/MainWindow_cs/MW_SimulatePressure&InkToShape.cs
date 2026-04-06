@@ -21,6 +21,7 @@ namespace Ink_Canvas
         {
             try
             {
+                TryApplyInkStraighten(e.Stroke);
                 inkCanvas.Opacity = 1;
                 if (Settings.InkToShape.IsInkToShapeEnabled && !Environment.Is64BitProcess)
                 {

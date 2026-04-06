@@ -507,14 +507,11 @@ namespace Ink_Canvas
             // InkToShape
             if (Settings.InkToShape != null)
             {
-                if (Settings.InkToShape.IsInkToShapeEnabled)
-                {
-                    ToggleSwitchEnableInkToShape.IsOn = true;
-                }
-                else
-                {
-                    ToggleSwitchEnableInkToShape.IsOn = false;
-                }
+                ToggleSwitchEnableInkToShape.IsOn = Settings.InkToShape.IsInkToShapeEnabled;
+                ToggleSwitchEnableInkStraighten.IsOn = Settings.InkToShape.IsInkStraightenEnabled;
+                SliderInkStraightenSpeedThreshold.Value = Settings.InkToShape.InkStraightenSpeedThreshold;
+                SliderInkStraightenDisplacementThreshold.Value = Settings.InkToShape.InkStraightenDisplacementThreshold;
+                SliderInkStraightenHoldDurationMs.Value = Settings.InkToShape.InkStraightenHoldDurationMs;
             }
             else
             {

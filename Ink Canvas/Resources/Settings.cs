@@ -367,6 +367,18 @@ namespace Ink_Canvas
     {
         [JsonProperty("isInkToShapeEnabled")]
         public bool IsInkToShapeEnabled { get; set; } = true;
+
+        [JsonProperty("isInkStraightenEnabled")]
+        public bool IsInkStraightenEnabled { get; set; } = true;
+
+        [JsonProperty("inkStraightenSpeedThreshold")]
+        public double InkStraightenSpeedThreshold { get; set; } = 0.02;
+
+        [JsonProperty("inkStraightenDisplacementThreshold")]
+        public double InkStraightenDisplacementThreshold { get; set; } = 2;
+
+        [JsonProperty("inkStraightenHoldDurationMs")]
+        public int InkStraightenHoldDurationMs { get; set; } = 800;
     }
 
     public class RandSettings {

@@ -470,6 +470,7 @@ namespace Ink_Canvas
 
         private void inkCanvas_TouchMove(object sender, TouchEventArgs e)
         {
+            UpdateInkStraightenTracking(e.GetTouchPoint(inkCanvas).Position);
             if (isSingleFingerDragMode) return;
             if (drawingShapeMode != 0)
             {
@@ -1285,6 +1286,7 @@ namespace Ink_Canvas
 
         private void Main_Grid_TouchUp(object sender, TouchEventArgs e)
         {
+            EndInkStraightenTracking(e.GetTouchPoint(inkCanvas).Position);
             inkCanvas_MouseUp(sender, null);
             if (dec.Count == 0)
             {
@@ -1495,18 +1497,22 @@ namespace Ink_Canvas
             {
                 iniP = e.GetPosition(inkCanvas);
             }
+            BeginInkStraightenTracking(e.GetPosition(inkCanvas));
         }
 
         private void inkCanvas_MouseMove(object sender, MouseEventArgs e)
         {
             if (isMouseDown)
             {
-                MouseTouchMove(e.GetPosition(inkCanvas));
+                var point = e.GetPosition(inkCanvas);
+                UpdateInkStraightenTracking(point);
+                MouseTouchMove(point);
             }
         }
 
         private void inkCanvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            EndInkStraightenTracking(Mouse.GetPosition(inkCanvas));
             if (drawingShapeMode == 5)
             {
                 Circle circle = new Circle(new Point(), 0, lastTempStroke);
