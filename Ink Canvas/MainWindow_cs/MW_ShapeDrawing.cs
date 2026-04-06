@@ -470,7 +470,7 @@ namespace Ink_Canvas
 
         private void inkCanvas_TouchMove(object sender, TouchEventArgs e)
         {
-            UpdateInkStraightenTracking(e.GetTouchPoint(inkCanvas).Position);
+            UpdateInkStraightenTracking(e.TouchDevice.Id, e.GetTouchPoint(inkCanvas).Position);
             if (isSingleFingerDragMode) return;
             if (drawingShapeMode != 0)
             {
@@ -1286,7 +1286,7 @@ namespace Ink_Canvas
 
         private void Main_Grid_TouchUp(object sender, TouchEventArgs e)
         {
-            EndInkStraightenTracking(e.GetTouchPoint(inkCanvas).Position);
+            EndInkStraightenTracking(e.TouchDevice.Id, e.GetTouchPoint(inkCanvas).Position, true);
             inkCanvas_MouseUp(sender, null);
             if (dec.Count == 0)
             {
@@ -1492,27 +1492,30 @@ namespace Ink_Canvas
         bool isMouseDown = false;
         private void inkCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.StylusDevice != null) return;
             isMouseDown = true;
             if (NeedUpdateIniP())
             {
                 iniP = e.GetPosition(inkCanvas);
             }
-            BeginInkStraightenTracking(e.GetPosition(inkCanvas));
+            BeginInkStraightenTracking(MousePointerId, e.GetPosition(inkCanvas));
         }
 
         private void inkCanvas_MouseMove(object sender, MouseEventArgs e)
         {
+            if (e.StylusDevice != null) return;
             if (isMouseDown)
             {
                 var point = e.GetPosition(inkCanvas);
-                UpdateInkStraightenTracking(point);
+                UpdateInkStraightenTracking(MousePointerId, point);
                 MouseTouchMove(point);
             }
         }
 
         private void inkCanvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            EndInkStraightenTracking(Mouse.GetPosition(inkCanvas));
+            if (e != null && e.StylusDevice != null) return;
+            if (e != null) EndInkStraightenTracking(MousePointerId, Mouse.GetPosition(inkCanvas));
             if (drawingShapeMode == 5)
             {
                 Circle circle = new Circle(new Point(), 0, lastTempStroke);

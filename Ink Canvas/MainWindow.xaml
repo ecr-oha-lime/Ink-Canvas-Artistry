@@ -140,7 +140,10 @@
             PreviewTouchDown="inkCanvas_PreviewTouchDown"
             PreviewTouchUp="inkCanvas_PreviewTouchUp"
             SelectionChanged="inkCanvas_SelectionChanged"
+            StylusDown="inkCanvas_StraightenStylusDown"
             StrokeCollected="inkCanvas_StrokeCollected"
+            StylusMove="inkCanvas_StraightenStylusMove"
+            StylusUp="inkCanvas_StraightenStylusUp"
             TouchDown="Main_Grid_TouchDown"
             TouchMove="inkCanvas_TouchMove"
             TouchUp="Main_Grid_TouchUp" />

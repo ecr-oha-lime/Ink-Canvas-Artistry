@@ -1,6 +1,8 @@
 using System;
-using System.Windows.Controls;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -10,19 +12,31 @@ namespace Ink_Canvas
 {
     public partial class MainWindow : Window
     {
-        private bool isInkStraightenTracking = false;
-        private bool isInkStraightenActivated = false;
-        private bool isInkStraightenLowSpeed = false;
-        private Point inkStraightenStartPoint;
-        private Point inkStraightenCurrentPoint;
-        private Point inkStraightenLowSpeedAnchorPoint;
-        private DateTime inkStraightenLowSpeedStartAt = DateTime.MinValue;
-        private DateTime inkStraightenLastSampleAt = DateTime.MinValue;
-        private Line inkStraightenPreviewLine;
+        private const int MousePointerId = -1;
 
-        private bool isInkStraightenPendingApply = false;
-        private Point inkStraightenPendingStartPoint;
-        private Point inkStraightenPendingEndPoint;
+        private class InkStraightenTrackingState
+        {
+            public bool IsTracking { get; set; }
+            public bool IsActivated { get; set; }
+            public bool IsLowSpeed { get; set; }
+            public Point StartPoint { get; set; }
+            public Point CurrentPoint { get; set; }
+            public Point LowSpeedAnchorPoint { get; set; }
+            public DateTime LowSpeedStartAt { get; set; } = DateTime.MinValue;
+            public DateTime LastSampleAt { get; set; } = DateTime.MinValue;
+            public Line PreviewLine { get; set; }
+        }
+
+        private class InkStraightenPendingApplyState
+        {
+            public Point StartPoint { get; set; }
+            public Point EndPoint { get; set; }
+            public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        }
+
+        private readonly Dictionary<int, InkStraightenTrackingState> inkStraightenTrackingStates = new Dictionary<int, InkStraightenTrackingState>();
+        private readonly List<InkStraightenPendingApplyState> inkStraightenPendingStates = new List<InkStraightenPendingApplyState>();
+        private readonly HashSet<int> activeTouchPointerIds = new HashSet<int>();
 
         private bool IsInkStraightenAvailable()
         {
@@ -33,144 +47,221 @@ namespace Ink_Canvas
                    && inkCanvas.EditingMode == InkCanvasEditingMode.Ink;
         }
 
-        private void BeginInkStraightenTracking(Point point)
+        private InkStraightenTrackingState GetTrackingState(int pointerId)
         {
-            ResetInkStraightenTracking();
-            if (!IsInkStraightenAvailable()) return;
+            if (inkStraightenTrackingStates.TryGetValue(pointerId, out var state))
+            {
+                return state;
+            }
 
-            isInkStraightenTracking = true;
-            inkStraightenStartPoint = point;
-            inkStraightenCurrentPoint = point;
-            inkStraightenLastSampleAt = DateTime.UtcNow;
+            state = new InkStraightenTrackingState();
+            inkStraightenTrackingStates[pointerId] = state;
+            return state;
         }
 
-        private void UpdateInkStraightenTracking(Point point)
+        private void BeginInkStraightenTracking(int pointerId, Point point, bool isTouch = false)
         {
-            if (!isInkStraightenTracking) return;
-
-            var now = DateTime.UtcNow;
-            var deltaMs = (now - inkStraightenLastSampleAt).TotalMilliseconds;
-            if (deltaMs <= 0) return;
-
-            var distance = GetDistance(inkStraightenCurrentPoint, point);
-            var speed = distance / deltaMs;
-
-            inkStraightenCurrentPoint = point;
-            inkStraightenLastSampleAt = now;
-
-            if (isInkStraightenActivated)
+            if (isTouch)
             {
-                UpdateInkStraightenPreviewLine(inkStraightenStartPoint, inkStraightenCurrentPoint);
+                activeTouchPointerIds.Add(pointerId);
+            }
+            else if (pointerId == MousePointerId && activeTouchPointerIds.Count > 0)
+            {
                 return;
             }
 
+            if (!IsInkStraightenAvailable())
+            {
+                ResetInkStraightenTracking(pointerId);
+                return;
+            }
+
+            var state = GetTrackingState(pointerId);
+            ResetInkStraightenTracking(pointerId);
+
+            state.IsTracking = true;
+            state.StartPoint = point;
+            state.CurrentPoint = point;
+            state.LastSampleAt = DateTime.UtcNow;
+        }
+
+        private void UpdateInkStraightenTracking(int pointerId, Point point)
+        {
+            if (!inkStraightenTrackingStates.TryGetValue(pointerId, out var state) || !state.IsTracking)
+            {
+                return;
+            }
+
+            if (!IsInkStraightenAvailable())
+            {
+                ResetInkStraightenTracking(pointerId);
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var deltaMs = (now - state.LastSampleAt).TotalMilliseconds;
+            if (deltaMs <= 0) return;
+
+            var distance = GetDistance(state.CurrentPoint, point);
+            var speed = distance / deltaMs;
+
+            state.CurrentPoint = point;
+            state.LastSampleAt = now;
+
+            if (state.IsActivated)
+            {
+                UpdateInkStraightenPreviewLine(state, state.StartPoint, state.CurrentPoint);
+                return;
+            }
+
+            EvaluateLowSpeedHold(state, point, speed, now);
+        }
+
+        private void EvaluateLowSpeedHold(InkStraightenTrackingState state, Point point, double speed, DateTime now)
+        {
             var speedThreshold = Math.Max(0.0001, Settings.InkToShape.InkStraightenSpeedThreshold);
             var displacementThreshold = Math.Max(0.1, Settings.InkToShape.InkStraightenDisplacementThreshold);
             var holdDurationMs = Math.Max(100, Settings.InkToShape.InkStraightenHoldDurationMs);
 
             if (speed < speedThreshold)
             {
-                if (!isInkStraightenLowSpeed)
+                if (!state.IsLowSpeed)
                 {
-                    isInkStraightenLowSpeed = true;
-                    inkStraightenLowSpeedAnchorPoint = point;
-                    inkStraightenLowSpeedStartAt = now;
+                    state.IsLowSpeed = true;
+                    state.LowSpeedAnchorPoint = point;
+                    state.LowSpeedStartAt = now;
                 }
 
-                if (GetDistance(inkStraightenLowSpeedAnchorPoint, point) <= displacementThreshold
-                    && (now - inkStraightenLowSpeedStartAt).TotalMilliseconds >= holdDurationMs)
+                if (GetDistance(state.LowSpeedAnchorPoint, point) <= displacementThreshold
+                    && (now - state.LowSpeedStartAt).TotalMilliseconds >= holdDurationMs)
                 {
-                    isInkStraightenActivated = true;
-                    UpdateInkStraightenPreviewLine(inkStraightenStartPoint, inkStraightenCurrentPoint);
+                    state.IsActivated = true;
+                    UpdateInkStraightenPreviewLine(state, state.StartPoint, state.CurrentPoint);
                 }
-                else if (GetDistance(inkStraightenLowSpeedAnchorPoint, point) > displacementThreshold)
+                else if (GetDistance(state.LowSpeedAnchorPoint, point) > displacementThreshold)
                 {
-                    isInkStraightenLowSpeed = false;
+                    state.IsLowSpeed = false;
                 }
             }
             else
             {
-                isInkStraightenLowSpeed = false;
+                state.IsLowSpeed = false;
             }
         }
 
-        private void EndInkStraightenTracking(Point point)
+        private void EndInkStraightenTracking(int pointerId, Point point, bool isTouch = false)
         {
-            if (isInkStraightenTracking && isInkStraightenActivated)
+            if (isTouch)
             {
-                isInkStraightenPendingApply = true;
-                inkStraightenPendingStartPoint = inkStraightenStartPoint;
-                inkStraightenPendingEndPoint = point;
+                activeTouchPointerIds.Remove(pointerId);
             }
-            ResetInkStraightenTracking();
-        }
 
-        private void ResetInkStraightenTracking()
-        {
-            isInkStraightenTracking = false;
-            isInkStraightenActivated = false;
-            isInkStraightenLowSpeed = false;
-            inkStraightenLowSpeedStartAt = DateTime.MinValue;
-            inkStraightenLastSampleAt = DateTime.MinValue;
-            RemoveInkStraightenPreviewLine();
-        }
-
-        private void UpdateInkStraightenPreviewLine(Point startPoint, Point endPoint)
-        {
-            if (inkStraightenPreviewLine == null)
+            if (!inkStraightenTrackingStates.TryGetValue(pointerId, out var state) || !state.IsTracking)
             {
-                inkStraightenPreviewLine = new Line
+                return;
+            }
+
+            if (IsInkStraightenAvailable() && !state.IsActivated && state.IsLowSpeed)
+            {
+                EvaluateLowSpeedHold(state, point, 0, DateTime.UtcNow);
+            }
+
+            if (state.IsTracking && state.IsActivated)
+            {
+                inkStraightenPendingStates.Add(new InkStraightenPendingApplyState
+                {
+                    StartPoint = state.StartPoint,
+                    EndPoint = point
+                });
+            }
+
+            ResetInkStraightenTracking(pointerId);
+        }
+
+        private void ResetInkStraightenTracking(int pointerId)
+        {
+            if (!inkStraightenTrackingStates.TryGetValue(pointerId, out var state)) return;
+
+            if (state.PreviewLine != null)
+            {
+                inkCanvas.Children.Remove(state.PreviewLine);
+                state.PreviewLine = null;
+            }
+
+            state.IsTracking = false;
+            state.IsActivated = false;
+            state.IsLowSpeed = false;
+            state.LowSpeedStartAt = DateTime.MinValue;
+            state.LastSampleAt = DateTime.MinValue;
+        }
+
+        private void UpdateInkStraightenPreviewLine(InkStraightenTrackingState state, Point startPoint, Point endPoint)
+        {
+            if (state.PreviewLine == null)
+            {
+                state.PreviewLine = new Line
                 {
                     IsHitTestVisible = false,
                     Stroke = new SolidColorBrush(inkCanvas.DefaultDrawingAttributes.Color),
                     StrokeThickness = Math.Max(1, inkCanvas.DefaultDrawingAttributes.Width)
                 };
-                inkCanvas.Children.Add(inkStraightenPreviewLine);
+                inkCanvas.Children.Add(state.PreviewLine);
             }
 
-            inkStraightenPreviewLine.StrokeThickness = Math.Max(1, inkCanvas.DefaultDrawingAttributes.Width);
-            inkStraightenPreviewLine.X1 = startPoint.X;
-            inkStraightenPreviewLine.Y1 = startPoint.Y;
-            inkStraightenPreviewLine.X2 = endPoint.X;
-            inkStraightenPreviewLine.Y2 = endPoint.Y;
-        }
-
-        private void RemoveInkStraightenPreviewLine()
-        {
-            if (inkStraightenPreviewLine == null) return;
-            inkCanvas.Children.Remove(inkStraightenPreviewLine);
-            inkStraightenPreviewLine = null;
+            state.PreviewLine.StrokeThickness = Math.Max(1, inkCanvas.DefaultDrawingAttributes.Width);
+            state.PreviewLine.X1 = startPoint.X;
+            state.PreviewLine.Y1 = startPoint.Y;
+            state.PreviewLine.X2 = endPoint.X;
+            state.PreviewLine.Y2 = endPoint.Y;
         }
 
         private void TryApplyInkStraighten(Stroke stroke)
         {
-            if (!isInkStraightenPendingApply || stroke == null)
+            if (stroke == null || stroke.StylusPoints.Count == 0)
             {
-                isInkStraightenPendingApply = false;
-                return;
-            }
-
-            if (stroke.StylusPoints.Count == 0)
-            {
-                isInkStraightenPendingApply = false;
+                inkStraightenPendingStates.Clear();
                 return;
             }
 
             var firstPoint = stroke.StylusPoints[0].ToPoint();
-            if (GetDistance(firstPoint, inkStraightenPendingStartPoint) > 20)
+            var now = DateTime.UtcNow;
+            inkStraightenPendingStates.RemoveAll(x => (now - x.CreatedAt).TotalSeconds > 5);
+
+            var pending = inkStraightenPendingStates
+                .OrderBy(x => GetDistance(firstPoint, x.StartPoint))
+                .FirstOrDefault();
+
+            if (pending == null || GetDistance(firstPoint, pending.StartPoint) > 20)
             {
-                isInkStraightenPendingApply = false;
                 return;
             }
 
             float pressure = stroke.StylusPoints[0].PressureFactor;
             stroke.StylusPoints = new StylusPointCollection
             {
-                new StylusPoint(inkStraightenPendingStartPoint.X, inkStraightenPendingStartPoint.Y, pressure),
-                new StylusPoint(inkStraightenPendingEndPoint.X, inkStraightenPendingEndPoint.Y, pressure)
+                new StylusPoint(pending.StartPoint.X, pending.StartPoint.Y, pressure),
+                new StylusPoint(pending.EndPoint.X, pending.EndPoint.Y, pressure)
             };
 
-            isInkStraightenPendingApply = false;
+            inkStraightenPendingStates.Remove(pending);
+        }
+
+        private void inkCanvas_StraightenStylusDown(object sender, StylusDownEventArgs e)
+        {
+            if (e.StylusDevice?.TabletDevice?.Type != TabletDeviceType.Stylus) return;
+            BeginInkStraightenTracking(e.StylusDevice.Id, e.GetPosition(inkCanvas));
+        }
+
+        private void inkCanvas_StraightenStylusMove(object sender, StylusEventArgs e)
+        {
+            if (e.StylusDevice?.TabletDevice?.Type != TabletDeviceType.Stylus) return;
+            UpdateInkStraightenTracking(e.StylusDevice.Id, e.GetPosition(inkCanvas));
+        }
+
+        private void inkCanvas_StraightenStylusUp(object sender, StylusEventArgs e)
+        {
+            if (e.StylusDevice?.TabletDevice?.Type != TabletDeviceType.Stylus) return;
+            EndInkStraightenTracking(e.StylusDevice.Id, e.GetPosition(inkCanvas));
         }
     }
 }
