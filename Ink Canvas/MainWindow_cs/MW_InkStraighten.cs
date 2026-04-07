@@ -161,9 +161,21 @@ namespace Ink_Canvas
                 return;
             }
 
-            if (IsInkStraightenAvailable() && !state.IsActivated && state.IsLowSpeed)
+            if (IsInkStraightenAvailable() && !state.IsActivated)
             {
-                EvaluateLowSpeedHold(state, point, 0, DateTime.UtcNow);
+                var now = DateTime.UtcNow;
+                var displacementThreshold = Math.Max(0.1, Settings.InkToShape.InkStraightenDisplacementThreshold);
+                var holdDurationMs = Math.Max(100, Settings.InkToShape.InkStraightenHoldDurationMs);
+
+                if (state.IsLowSpeed)
+                {
+                    EvaluateLowSpeedHold(state, point, 0, now);
+                }
+                else if ((now - state.LastSampleAt).TotalMilliseconds >= holdDurationMs
+                         && GetDistance(state.CurrentPoint, point) <= displacementThreshold)
+                {
+                    state.IsActivated = true;
+                }
             }
 
             if (state.IsTracking && state.IsActivated)
