@@ -1492,7 +1492,8 @@ namespace Ink_Canvas
         bool isMouseDown = false;
         private void inkCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.StylusDevice != null) return;
+            var tabletType = e.StylusDevice?.TabletDevice?.Type;
+            if (tabletType == TabletDeviceType.Stylus || tabletType == TabletDeviceType.Touch) return;
             isMouseDown = true;
             if (NeedUpdateIniP())
             {
@@ -1503,7 +1504,8 @@ namespace Ink_Canvas
 
         private void inkCanvas_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.StylusDevice != null) return;
+            var tabletType = e.StylusDevice?.TabletDevice?.Type;
+            if (tabletType == TabletDeviceType.Stylus || tabletType == TabletDeviceType.Touch) return;
             if (isMouseDown)
             {
                 var point = e.GetPosition(inkCanvas);
@@ -1514,7 +1516,8 @@ namespace Ink_Canvas
 
         private void inkCanvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            if (e != null && e.StylusDevice != null) return;
+            var tabletType = e?.StylusDevice?.TabletDevice?.Type;
+            if (tabletType == TabletDeviceType.Stylus || tabletType == TabletDeviceType.Touch) return;
             if (e != null) EndInkStraightenTracking(MousePointerId, Mouse.GetPosition(inkCanvas));
             if (drawingShapeMode == 5)
             {

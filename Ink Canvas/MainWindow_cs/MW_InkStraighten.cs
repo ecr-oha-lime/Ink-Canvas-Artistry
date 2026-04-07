@@ -223,15 +223,12 @@ namespace Ink_Canvas
                 return;
             }
 
-            var firstPoint = stroke.StylusPoints[0].ToPoint();
             var now = DateTime.UtcNow;
             inkStraightenPendingStates.RemoveAll(x => (now - x.CreatedAt).TotalSeconds > 5);
-
             var pending = inkStraightenPendingStates
-                .OrderBy(x => GetDistance(firstPoint, x.StartPoint))
+                .OrderBy(x => x.CreatedAt)
                 .FirstOrDefault();
-
-            if (pending == null || GetDistance(firstPoint, pending.StartPoint) > 20)
+            if (pending == null)
             {
                 return;
             }
