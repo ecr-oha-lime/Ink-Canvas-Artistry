@@ -520,6 +520,15 @@ namespace Ink_Canvas
             {
                 Settings.InkToShape = new InkToShape();
             }
+            // InkStraightening
+            if (Settings.InkStraightening != null)
+            {
+                ToggleSwitchEnableInkStraightening.IsOn = Settings.InkStraightening.IsEnabled;
+            }
+            else
+            {
+                Settings.InkStraightening = new InkStraightening();
+            }
             // RandSettings
             if (Settings.RandSettings != null)
             {

@@ -22,6 +22,11 @@ namespace Ink_Canvas
             try
             {
                 inkCanvas.Opacity = 1;
+                TryReplaceCollectedStrokeWithStraightLine(e);
+                if (!inkCanvas.Strokes.Contains(e.Stroke))
+                {
+                    return;
+                }
                 if (Settings.InkToShape.IsInkToShapeEnabled && !Environment.Is64BitProcess)
                 {
                     void InkToShapeProcess()

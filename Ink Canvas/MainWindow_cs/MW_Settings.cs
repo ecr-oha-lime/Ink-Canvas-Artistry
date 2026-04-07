@@ -870,6 +870,10 @@ namespace Ink_Canvas
             Settings.Gesture.IsEnableTwoFingerRotationOnSelection = true;
 
             Settings.InkToShape.IsInkToShapeEnabled = true;
+            Settings.InkStraightening.IsEnabled = true;
+            Settings.InkStraightening.HoldDurationMs = 800;
+            Settings.InkStraightening.SpeedThresholdPxPerMs = 0.03;
+            Settings.InkStraightening.DisplacementThresholdPx = 4;
 
             Settings.Startup.IsEnableNibMode = false;
             Settings.Startup.IsAutoUpdate = true;
@@ -920,6 +924,13 @@ namespace Ink_Canvas
         {
             if (!isLoaded) return;
             Settings.InkToShape.IsInkToShapeEnabled = ToggleSwitchEnableInkToShape.IsOn;
+            SaveSettingsToFile();
+        }
+
+        private void ToggleSwitchEnableInkStraightening_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Settings.InkStraightening.IsEnabled = ToggleSwitchEnableInkStraightening.IsOn;
             SaveSettingsToFile();
         }
 

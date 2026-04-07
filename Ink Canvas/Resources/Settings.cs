@@ -18,6 +18,8 @@ namespace Ink_Canvas
         public Gesture Gesture { get; set; } = new Gesture();
         [JsonProperty("inkToShape")]
         public InkToShape InkToShape { get; set; } = new InkToShape();
+        [JsonProperty("inkStraightening")]
+        public InkStraightening InkStraightening { get; set; } = new InkStraightening();
         [JsonProperty("startup")]
         public Startup Startup { get; set; } = new Startup();
         [JsonProperty("randSettings")]
@@ -367,6 +369,21 @@ namespace Ink_Canvas
     {
         [JsonProperty("isInkToShapeEnabled")]
         public bool IsInkToShapeEnabled { get; set; } = true;
+    }
+
+    public class InkStraightening
+    {
+        [JsonProperty("isEnabled")]
+        public bool IsEnabled { get; set; } = true;
+
+        [JsonProperty("holdDurationMs")]
+        public int HoldDurationMs { get; set; } = 800;
+
+        [JsonProperty("speedThresholdPxPerMs")]
+        public double SpeedThresholdPxPerMs { get; set; } = 0.03;
+
+        [JsonProperty("displacementThresholdPx")]
+        public double DisplacementThresholdPx { get; set; } = 4;
     }
 
     public class RandSettings {

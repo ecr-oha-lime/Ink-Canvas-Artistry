@@ -137,6 +137,9 @@
             MouseDown="inkCanvas_MouseDown"
             MouseMove="inkCanvas_MouseMove"
             MouseUp="inkCanvas_MouseUp"
+            PreviewStylusDown="inkCanvas_PreviewStylusDown"
+            PreviewStylusMove="inkCanvas_PreviewStylusMove"
+            PreviewStylusUp="inkCanvas_PreviewStylusUp"
             PreviewTouchDown="inkCanvas_PreviewTouchDown"
             PreviewTouchUp="inkCanvas_PreviewTouchUp"
             SelectionChanged="inkCanvas_SelectionChanged"
@@ -1448,6 +1451,23 @@
                                                                             OffContent="关"
                                                                             OnContent="开"
                                                                             Toggled="ToggleSwitchEnableInkToShape_Toggled" />
+                                                                    </ikw:SimpleStackPanel>
+                                                                    <ikw:SimpleStackPanel Width="135" Orientation="Horizontal">
+                                                                        <Label
+                                                                            Margin="0,0,10,0"
+                                                                            VerticalAlignment="Center"
+                                                                            Content="直线拉直"
+                                                                            FontSize="15"
+                                                                            Foreground="{DynamicResource BoardBarForeground}" />
+                                                                        <ui:ToggleSwitch
+                                                                            Width="70"
+                                                                            MinWidth="0"
+                                                                            ui:ThemeManager.RequestedTheme="{DynamicResource BoardTheme}"
+                                                                            Foreground="{DynamicResource BoardBarForeground}"
+                                                                            IsOn="{Binding ElementName=ToggleSwitchEnableInkStraightening, Path=IsOn}"
+                                                                            OffContent="关"
+                                                                            OnContent="开"
+                                                                            Toggled="ToggleSwitchEnableInkStraightening_Toggled" />
                                                                     </ikw:SimpleStackPanel>
                                                                 </ikw:SimpleStackPanel>
                                                             </Controls:UniformGrid>
@@ -3428,6 +3448,26 @@
                                         Foreground="{DynamicResource SettingsPageForeground}"
                                         Text="启用墨迹识别" />
                                 </ikw:SimpleStackPanel>
+                                <ikw:SimpleStackPanel Orientation="Horizontal">
+                                    <ikw:SimpleStackPanel Width="50">
+                                        <ui:ToggleSwitch
+                                            Name="ToggleSwitchEnableInkStraightening"
+                                            IsOn="True"
+                                            OffContent="关"
+                                            OnContent="开"
+                                            Toggled="ToggleSwitchEnableInkStraightening_Toggled" />
+                                    </ikw:SimpleStackPanel>
+                                    <TextBlock
+                                        Margin="0,0,14,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="14"
+                                        Foreground="{DynamicResource SettingsPageForeground}"
+                                        Text="直线拉直" />
+                                </ikw:SimpleStackPanel>
+                                <TextBlock
+                                    Foreground="{DynamicResource SettingsPageAnnotationForeground}"
+                                    Text="# 长按可将墨迹拉直为直线（默认 800ms，速度阈值 0.03 px/ms，位移阈值 4 px）"
+                                    TextWrapping="Wrap" />
                             </ikw:SimpleStackPanel>
                         </GroupBox>
                         <GroupBox Name="GroupBoxAppearanceNewUI">
@@ -5860,6 +5900,22 @@
                                                                             OffContent="关"
                                                                             OnContent="开"
                                                                             Toggled="ToggleSwitchEnableInkToShape_Toggled" />
+                                                                    </ikw:SimpleStackPanel>
+                                                                    <ikw:SimpleStackPanel Width="135" Orientation="Horizontal">
+                                                                        <Label
+                                                                            Margin="0,0,10,0"
+                                                                            VerticalAlignment="Center"
+                                                                            Content="直线拉直"
+                                                                            FontSize="15"
+                                                                            Foreground="{DynamicResource FloatBarForeground}" />
+                                                                        <ui:ToggleSwitch
+                                                                            Width="70"
+                                                                            MinWidth="0"
+                                                                            Foreground="{DynamicResource FloatBarForeground}"
+                                                                            IsOn="{Binding ElementName=ToggleSwitchEnableInkStraightening, Path=IsOn}"
+                                                                            OffContent="关"
+                                                                            OnContent="开"
+                                                                            Toggled="ToggleSwitchEnableInkStraightening_Toggled" />
                                                                     </ikw:SimpleStackPanel>
                                                                 </ikw:SimpleStackPanel>
                                                             </Controls:UniformGrid>

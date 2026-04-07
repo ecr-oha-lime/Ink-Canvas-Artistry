@@ -1491,6 +1491,7 @@ namespace Ink_Canvas
         private void inkCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
             isMouseDown = true;
+            HandleMouseStraighteningOnDown(e);
             if (NeedUpdateIniP())
             {
                 iniP = e.GetPosition(inkCanvas);
@@ -1499,6 +1500,7 @@ namespace Ink_Canvas
 
         private void inkCanvas_MouseMove(object sender, MouseEventArgs e)
         {
+            HandleMouseStraighteningOnMove(e);
             if (isMouseDown)
             {
                 MouseTouchMove(e.GetPosition(inkCanvas));
@@ -1507,6 +1509,7 @@ namespace Ink_Canvas
 
         private void inkCanvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            HandleMouseStraighteningOnUp(e);
             if (drawingShapeMode == 5)
             {
                 Circle circle = new Circle(new Point(), 0, lastTempStroke);
