@@ -339,7 +339,8 @@ namespace Ink_Canvas
 
             using (var screenshot = GetScreenshotBitmap())
             {
-                var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone());
+                var virtualScreenBounds = System.Windows.Forms.SystemInformation.VirtualScreen;
+                var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone(), virtualScreenBounds);
                 bool? dialogResult = window.ShowDialog();
                 if (dialogResult != true || window.CapturedBitmap == null)
                 {
@@ -351,10 +352,17 @@ namespace Ink_Canvas
                     if (window.ActionResult == SelectionScreenshotAction.SaveToDesktop)
                     {
                         SaveBitmapToDesktop(result, true);
+                        if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+                        {
+                            SaveInkCanvasFile(false, false);
+                        }
                     }
                     else if (window.ActionResult == SelectionScreenshotAction.AddToBoard)
                     {
-                        AddBitmapToBoard((System.Drawing.Bitmap)result.Clone());
+                        using (var boardBitmap = (System.Drawing.Bitmap)result.Clone())
+                        {
+                            AddBitmapToBoard(boardBitmap);
+                        }
                         ShowNotificationAsync("选区截图已添加到白板");
                     }
                 }

@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using Point = System.Windows.Point;
 
 namespace Ink_Canvas.Windows
@@ -27,6 +26,7 @@ namespace Ink_Canvas.Windows
     public partial class SelectionScreenshotWindow : Window
     {
         private readonly Bitmap _fullScreenshot;
+        private readonly Rectangle _virtualScreenBounds;
         private SelectionScreenshotMode _mode = SelectionScreenshotMode.Rectangle;
         private bool _isSelecting;
         private Point _startPoint;
@@ -35,11 +35,19 @@ namespace Ink_Canvas.Windows
         public SelectionScreenshotAction ActionResult { get; private set; } = SelectionScreenshotAction.Cancel;
         public Bitmap CapturedBitmap { get; private set; }
 
-        public SelectionScreenshotWindow(Bitmap screenshot)
+        public SelectionScreenshotWindow(Bitmap screenshot, Rectangle virtualScreenBounds)
         {
             InitializeComponent();
             _fullScreenshot = screenshot;
+            _virtualScreenBounds = virtualScreenBounds;
             UpdateModeVisualState();
+        }
+
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _fullScreenshot?.Dispose();
+            base.OnClosed(e);
         }
 
         private void RootGrid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -106,13 +114,10 @@ namespace Ink_Canvas.Windows
             {
                 UpdateRectVisual(_startPoint, pos);
             }
-            else
+            else if (_freehandPoints.Count == 0 || Distance(_freehandPoints[_freehandPoints.Count - 1], pos) >= 2)
             {
-                if (_freehandPoints.Count == 0 || Distance(_freehandPoints[_freehandPoints.Count - 1], pos) >= 2)
-                {
-                    _freehandPoints.Add(pos);
-                    UpdatePathVisual();
-                }
+                _freehandPoints.Add(pos);
+                UpdatePathVisual();
             }
         }
 
@@ -219,28 +224,24 @@ namespace Ink_Canvas.Windows
 
         private Bitmap BuildCaptureBitmap()
         {
-            if (_mode == SelectionScreenshotMode.Rectangle)
-            {
-                return CaptureRectangle();
-            }
-
-            return CaptureFreehand();
+            return _mode == SelectionScreenshotMode.Rectangle ? CaptureRectangle() : CaptureFreehand();
         }
 
         private Bitmap CaptureRectangle()
         {
             if (SelectionRect.Width < 5 || SelectionRect.Height < 5) return null;
 
-            var rect = new Rect(Canvas.GetLeft(SelectionRect), Canvas.GetTop(SelectionRect), SelectionRect.Width, SelectionRect.Height);
-            rect = ClampRectToBitmap(rect);
-            if (rect.Width < 5 || rect.Height < 5) return null;
+            var left = Canvas.GetLeft(SelectionRect);
+            var top = Canvas.GetTop(SelectionRect);
+            var deviceRect = BuildDeviceRect(new Rect(left, top, SelectionRect.Width, SelectionRect.Height));
+            if (deviceRect.Width < 5 || deviceRect.Height < 5) return null;
 
-            var result = new Bitmap((int)rect.Width, (int)rect.Height, PixelFormat.Format32bppArgb);
+            var result = new Bitmap((int)deviceRect.Width, (int)deviceRect.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(result))
             {
                 g.DrawImage(_fullScreenshot,
                     new System.Drawing.Rectangle(0, 0, result.Width, result.Height),
-                    new System.Drawing.Rectangle((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height),
+                    new System.Drawing.Rectangle((int)deviceRect.X, (int)deviceRect.Y, (int)deviceRect.Width, (int)deviceRect.Height),
                     GraphicsUnit.Pixel);
             }
             return result;
@@ -250,23 +251,25 @@ namespace Ink_Canvas.Windows
         {
             if (_freehandPoints.Count < 3 || SelectionPath.Data == null) return null;
 
-            Rect bounds = SelectionPath.Data.Bounds;
-            bounds = ClampRectToBitmap(bounds);
+            var sourcePoints = BuildDevicePoints(_freehandPoints);
+            if (sourcePoints.Count < 3) return null;
+
+            var bounds = BuildBounds(sourcePoints);
             if (bounds.Width < 5 || bounds.Height < 5) return null;
 
-            var result = new Bitmap((int)Math.Ceiling(bounds.Width), (int)Math.Ceiling(bounds.Height), PixelFormat.Format32bppArgb);
+            var result = new Bitmap((int)Math.Ceiling(bounds.Width), (int)Math.Ceiling(bounds.Height), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(result))
             {
                 g.Clear(System.Drawing.Color.Transparent);
                 using (var gp = new System.Drawing.Drawing2D.GraphicsPath())
                 {
-                    var points = new List<System.Drawing.PointF>();
-                    foreach (var p in _freehandPoints)
+                    var polygon = new List<System.Drawing.PointF>();
+                    foreach (var p in sourcePoints)
                     {
-                        points.Add(new System.Drawing.PointF((float)(p.X - bounds.X), (float)(p.Y - bounds.Y)));
+                        polygon.Add(new System.Drawing.PointF((float)(p.X - bounds.X), (float)(p.Y - bounds.Y)));
                     }
-                    if (points.Count < 3) return null;
-                    gp.AddPolygon(points.ToArray());
+                    if (polygon.Count < 3) return null;
+                    gp.AddPolygon(polygon.ToArray());
                     g.SetClip(gp);
                     g.DrawImage(_fullScreenshot,
                         new System.Drawing.Rectangle(0, 0, result.Width, result.Height),
@@ -278,20 +281,65 @@ namespace Ink_Canvas.Windows
             return result;
         }
 
-        private Rect ClampRectToBitmap(Rect rect)
+        private Rect BuildDeviceRect(Rect uiRect)
+        {
+            var p1 = MapUiPointToScreenshot(new Point(uiRect.Left, uiRect.Top));
+            var p2 = MapUiPointToScreenshot(new Point(uiRect.Right, uiRect.Bottom));
+            return ClampToBitmap(new Rect(Math.Min(p1.X, p2.X), Math.Min(p1.Y, p2.Y), Math.Abs(p2.X - p1.X), Math.Abs(p2.Y - p1.Y)));
+        }
+
+        private List<Point> BuildDevicePoints(List<Point> points)
+        {
+            var result = new List<Point>(points.Count);
+            foreach (var point in points)
+            {
+                result.Add(MapUiPointToScreenshot(point));
+            }
+            return result;
+        }
+
+        private Point MapUiPointToScreenshot(Point uiPoint)
+        {
+            var source = PresentationSource.FromVisual(this);
+            double scaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1d;
+            double scaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1d;
+
+            double absoluteX = (_virtualScreenBounds.X + Left * scaleX) + uiPoint.X * scaleX;
+            double absoluteY = (_virtualScreenBounds.Y + Top * scaleY) + uiPoint.Y * scaleY;
+
+            return new Point(absoluteX - _virtualScreenBounds.X, absoluteY - _virtualScreenBounds.Y);
+        }
+
+        private Rect BuildBounds(List<Point> points)
+        {
+            double minX = double.MaxValue;
+            double minY = double.MaxValue;
+            double maxX = double.MinValue;
+            double maxY = double.MinValue;
+
+            foreach (var point in points)
+            {
+                minX = Math.Min(minX, point.X);
+                minY = Math.Min(minY, point.Y);
+                maxX = Math.Max(maxX, point.X);
+                maxY = Math.Max(maxY, point.Y);
+            }
+
+            return ClampToBitmap(new Rect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)));
+        }
+
+        private Rect ClampToBitmap(Rect rect)
         {
             double x = Math.Max(0, rect.X);
             double y = Math.Max(0, rect.Y);
             double right = Math.Min(_fullScreenshot.Width, rect.X + rect.Width);
             double bottom = Math.Min(_fullScreenshot.Height, rect.Y + rect.Height);
-
             return new Rect(x, y, Math.Max(0, right - x), Math.Max(0, bottom - y));
         }
 
         private void UpdateModeVisualState()
         {
             UpdateHintText();
-
             BtnRectMode.Opacity = _mode == SelectionScreenshotMode.Rectangle ? 1 : 0.75;
             BtnFreeMode.Opacity = _mode == SelectionScreenshotMode.Freehand ? 1 : 0.75;
 
