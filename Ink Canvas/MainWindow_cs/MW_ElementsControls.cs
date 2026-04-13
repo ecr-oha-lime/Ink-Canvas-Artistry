@@ -93,6 +93,42 @@ namespace Ink_Canvas
                 return image;
             });
         }
+
+
+        /// <summary>
+        /// 将位图作为图片元素插入白板。
+        /// </summary>
+        private void AddBitmapToBoard(System.Drawing.Bitmap bitmap)
+        {
+            if (bitmap == null) return;
+
+            var image = new Image();
+            image.Name = "img_" + DateTime.Now.ToString("yyyyMMdd_HH_mm_ss_fff");
+
+            using (var ms = new MemoryStream())
+            {
+                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                ms.Position = 0;
+
+                var bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.StreamSource = ms;
+                bitmapImage.EndInit();
+                bitmapImage.Freeze();
+
+                image.Source = bitmapImage;
+                image.Width = bitmapImage.PixelWidth;
+                image.Height = bitmapImage.PixelHeight;
+            }
+
+            CenterAndScaleElement(image);
+            InkCanvas.SetLeft(image, 0);
+            InkCanvas.SetTop(image, 0);
+            inkCanvas.Children.Add(image);
+            timeMachine.CommitElementInsertHistory(image);
+        }
+
         #endregion
 
         #region Media
