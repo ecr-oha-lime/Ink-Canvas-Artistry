@@ -329,6 +329,13 @@ namespace Ink_Canvas
         {
             HideSubPanelsImmediately();
             await Task.Delay(50);
+            SaveScreenShotToDesktop();
+        }
+
+        private async void SymbolIconSelectionScreenshot_Click(object sender, RoutedEventArgs e)
+        {
+            HideSubPanelsImmediately();
+            await Task.Delay(50);
 
             using (var screenshot = GetScreenshotBitmap())
             {
