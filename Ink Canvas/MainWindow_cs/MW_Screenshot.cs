@@ -41,11 +41,24 @@ namespace Ink_Canvas
         /// </summary>
         private void SaveScreenShotToDesktop()
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            bitmap.Save(savePath + @"\" + DateTime.Now.ToString("u").Replace(':', '-') + ".png", ImageFormat.Png);
-            ShowNotificationAsync("截图成功保存至【桌面" + @"\" + DateTime.Now.ToString("u").Replace(':', '-') + ".png】");
+            SaveBitmapToDesktop(GetScreenshotBitmap(), true);
             if (Settings.Automation.IsAutoSaveStrokesAtScreenshot) SaveInkCanvasFile(false, false);
+        }
+
+        /// <summary>
+        /// 将指定位图保存到桌面。
+        /// </summary>
+        private string SaveBitmapToDesktop(Bitmap bitmap, bool showNotification)
+        {
+            string savePath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string fileName = DateTime.Now.ToString("u").Replace(':', '-') + ".png";
+            string fullPath = Path.Combine(savePath, fileName);
+            bitmap.Save(fullPath, ImageFormat.Png);
+            if (showNotification)
+            {
+                ShowNotificationAsync("截图成功保存至【桌面" + @"\" + fileName + "】");
+            }
+            return fullPath;
         }
 
         /// <summary>

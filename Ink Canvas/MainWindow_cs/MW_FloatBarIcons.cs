@@ -1,4 +1,5 @@
 ﻿using Ink_Canvas.Helpers;
+using Ink_Canvas.Windows;
 using System;
 using System.Threading.Tasks;
 using System.Windows;
@@ -328,7 +329,29 @@ namespace Ink_Canvas
         {
             HideSubPanelsImmediately();
             await Task.Delay(50);
-            SaveScreenShotToDesktop();
+
+            using (var screenshot = GetScreenshotBitmap())
+            {
+                var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone());
+                bool? dialogResult = window.ShowDialog();
+                if (dialogResult != true || window.CapturedBitmap == null)
+                {
+                    return;
+                }
+
+                using (var result = window.CapturedBitmap)
+                {
+                    if (window.ActionResult == SelectionScreenshotAction.SaveToDesktop)
+                    {
+                        SaveBitmapToDesktop(result, true);
+                    }
+                    else if (window.ActionResult == SelectionScreenshotAction.AddToBoard)
+                    {
+                        AddBitmapToBoard((System.Drawing.Bitmap)result.Clone());
+                        ShowNotificationAsync("选区截图已添加到白板");
+                    }
+                }
+            }
         }
 
         bool isDisplayingOrHidingBlackboard = false;

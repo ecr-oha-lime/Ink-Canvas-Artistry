@@ -2663,7 +2663,7 @@
                                                                 Glyph="&#xe722;" />
                                                             <Label
                                                                 HorizontalAlignment="Center"
-                                                                Content="截屏"
+                                                                Content="选区截图"
                                                                 FontSize="10"
                                                                 Foreground="{DynamicResource BoardBarForeground}" />
                                                         </ikw:SimpleStackPanel>
@@ -7202,7 +7202,7 @@
                                                             Glyph="&#xe722;" />
                                                         <Label
                                                             HorizontalAlignment="Center"
-                                                            Content="截屏"
+                                                            Content="选区截图"
                                                             FontSize="10"
                                                             Foreground="{DynamicResource FloatBarForeground}" />
                                                     </ikw:SimpleStackPanel>
