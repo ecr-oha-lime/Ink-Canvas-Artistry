@@ -197,8 +197,8 @@ namespace Ink_Canvas.Windows
             double w = Math.Abs(p1.X - p2.X);
             double h = Math.Abs(p1.Y - p2.Y);
 
-            Canvas.SetLeft(SelectionRect, x);
-            Canvas.SetTop(SelectionRect, y);
+            System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
+            System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
             SelectionRect.Width = w;
             SelectionRect.Height = h;
         }
@@ -231,8 +231,8 @@ namespace Ink_Canvas.Windows
         {
             if (SelectionRect.Width < 5 || SelectionRect.Height < 5) return null;
 
-            var left = Canvas.GetLeft(SelectionRect);
-            var top = Canvas.GetTop(SelectionRect);
+            var left = System.Windows.Controls.Canvas.GetLeft(SelectionRect);
+            var top = System.Windows.Controls.Canvas.GetTop(SelectionRect);
             var deviceRect = BuildDeviceRect(new Rect(left, top, SelectionRect.Width, SelectionRect.Height));
             if (deviceRect.Width < 5 || deviceRect.Height < 5) return null;
 
