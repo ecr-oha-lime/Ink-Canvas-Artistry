@@ -227,11 +227,37 @@ namespace Ink_Canvas.Windows
         private Bitmap BuildCaptureBitmap()
         {
             bool hideInk = ToggleHideInk.IsChecked == true;
-            using (Bitmap screenshot = hideInk ? _screenshotProvider(true) : (Bitmap)_fullScreenshot.Clone())
+            Bitmap screenshot = null;
+            try
             {
+                if (hideInk)
+                {
+                    // 重新截图前先隐藏选区窗口，避免半透明遮罩被截入结果
+                    Visibility oldVisibility = Visibility;
+                    try
+                    {
+                        Visibility = Visibility.Hidden;
+                        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                        screenshot = _screenshotProvider(true);
+                    }
+                    finally
+                    {
+                        Visibility = oldVisibility;
+                        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                    }
+                }
+                else
+                {
+                    screenshot = (Bitmap)_fullScreenshot.Clone();
+                }
+
                 return _mode == SelectionScreenshotMode.Rectangle
                     ? CaptureRectangle(screenshot)
                     : CaptureFreehand(screenshot);
+            }
+            finally
+            {
+                screenshot?.Dispose();
             }
         }
 
