@@ -13,26 +13,28 @@ namespace Ink_Canvas
         /// </summary>
         private void SaveScreenshot(bool isHideNotification, string fileName = null)
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - Screenshots";
-            if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
-            if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+            using (var bitmap = GetScreenshotBitmap())
             {
-                savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
-            }
-            savePath += @"\" + fileName + ".png";
-            if (!Directory.Exists(Path.GetDirectoryName(savePath)))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(savePath));
-            }
-            bitmap.Save(savePath, ImageFormat.Png);
-            if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
-            {
-                SaveInkCanvasFile(false, false);
-            }
-            if (!isHideNotification)
-            {
-                ShowNotificationAsync("截图成功保存至 " + savePath);
+                string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - Screenshots";
+                if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
+                if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+                {
+                    savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
+                }
+                savePath += @"\" + fileName + ".png";
+                if (!Directory.Exists(Path.GetDirectoryName(savePath)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+                }
+                bitmap.Save(savePath, ImageFormat.Png);
+                if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+                {
+                    SaveInkCanvasFile(false, false);
+                }
+                if (!isHideNotification)
+                {
+                    ShowNotificationAsync("截图成功保存至 " + savePath);
+                }
             }
         }
 
@@ -41,11 +43,27 @@ namespace Ink_Canvas
         /// </summary>
         private void SaveScreenShotToDesktop()
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            bitmap.Save(savePath + @"\" + DateTime.Now.ToString("u").Replace(':', '-') + ".png", ImageFormat.Png);
-            ShowNotificationAsync("截图成功保存至【桌面" + @"\" + DateTime.Now.ToString("u").Replace(':', '-') + ".png】");
+            using (var bitmap = GetScreenshotBitmap())
+            {
+                SaveBitmapToDesktop(bitmap, true);
+            }
             if (Settings.Automation.IsAutoSaveStrokesAtScreenshot) SaveInkCanvasFile(false, false);
+        }
+
+        /// <summary>
+        /// 将指定位图保存到桌面。
+        /// </summary>
+        private string SaveBitmapToDesktop(Bitmap bitmap, bool showNotification)
+        {
+            string savePath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string fileName = DateTime.Now.ToString("u").Replace(':', '-') + ".png";
+            string fullPath = Path.Combine(savePath, fileName);
+            bitmap.Save(fullPath, ImageFormat.Png);
+            if (showNotification)
+            {
+                ShowNotificationAsync("截图成功保存至【桌面" + @"\" + fileName + "】");
+            }
+            return fullPath;
         }
 
         /// <summary>
@@ -53,22 +71,24 @@ namespace Ink_Canvas
         /// </summary>
         private void SavePPTScreenshot(string fileName)
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - PPT Screenshots";
-            if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+            using (var bitmap = GetScreenshotBitmap())
             {
-                savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
-            }
-            if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
-            savePath += @"\" + fileName + ".png";
-            if (!Directory.Exists(Path.GetDirectoryName(savePath)))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(savePath));
-            }
-            bitmap.Save(savePath, ImageFormat.Png);
-            if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
-            {
-                SaveInkCanvasFile(false, false);
+                string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - PPT Screenshots";
+                if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+                {
+                    savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
+                }
+                if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
+                savePath += @"\" + fileName + ".png";
+                if (!Directory.Exists(Path.GetDirectoryName(savePath)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+                }
+                bitmap.Save(savePath, ImageFormat.Png);
+                if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+                {
+                    SaveInkCanvasFile(false, false);
+                }
             }
         }
 
