@@ -102,6 +102,12 @@ namespace Ink_Canvas
         {
             if (bitmap == null) return;
 
+            // 若当前处于屏幕批注模式，先切换到黑板模式再插入图片
+            if (currentMode == 0)
+            {
+                ImageBlackboard_Click(null, null);
+            }
+
             var image = new Image();
             image.Name = "img_" + DateTime.Now.ToString("yyyyMMdd_HH_mm_ss_fff");
 
