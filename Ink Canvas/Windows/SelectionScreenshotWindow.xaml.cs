@@ -300,14 +300,15 @@ namespace Ink_Canvas.Windows
 
         private Point MapUiPointToScreenshot(Point uiPoint)
         {
+            // 先将窗口内坐标转换为屏幕坐标，再映射到虚拟屏幕位图坐标
+            Point screenPoint = PointToScreen(uiPoint);
             var source = PresentationSource.FromVisual(this);
-            double scaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1d;
-            double scaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1d;
+            if (source?.CompositionTarget != null)
+            {
+                screenPoint = source.CompositionTarget.TransformToDevice.Transform(screenPoint);
+            }
 
-            double absoluteX = (_virtualScreenBounds.X + Left * scaleX) + uiPoint.X * scaleX;
-            double absoluteY = (_virtualScreenBounds.Y + Top * scaleY) + uiPoint.Y * scaleY;
-
-            return new Point(absoluteX - _virtualScreenBounds.X, absoluteY - _virtualScreenBounds.Y);
+            return new Point(screenPoint.X - _virtualScreenBounds.X, screenPoint.Y - _virtualScreenBounds.Y);
         }
 
         private Rect BuildBounds(List<Point> points)
