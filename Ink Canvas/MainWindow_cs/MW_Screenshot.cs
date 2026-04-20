@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows;
-using System.Windows.Ink;
 using System.Windows.Threading;
 
 namespace Ink_Canvas
@@ -106,18 +105,22 @@ namespace Ink_Canvas
                 return GetScreenshotBitmap();
             }
 
-            StrokeCollection strokesBackup = inkCanvas.Strokes.Clone();
+            double inkCanvasOpacity = inkCanvas.Opacity;
+            bool inkCanvasIsHitTestVisible = inkCanvas.IsHitTestVisible;
             Visibility selectionCoverVisibility = GridInkCanvasSelectionCover.Visibility;
             try
             {
-                inkCanvas.Strokes.Clear();
+                // 临时隐藏墨迹，不改动笔迹数据，避免影响撤销/重做历史
+                inkCanvas.Opacity = 0;
+                inkCanvas.IsHitTestVisible = false;
                 GridInkCanvasSelectionCover.Visibility = Visibility.Collapsed;
                 Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
                 return GetScreenshotBitmap();
             }
             finally
             {
-                inkCanvas.Strokes = strokesBackup;
+                inkCanvas.Opacity = inkCanvasOpacity;
+                inkCanvas.IsHitTestVisible = inkCanvasIsHitTestVisible;
                 GridInkCanvasSelectionCover.Visibility = selectionCoverVisibility;
             }
         }

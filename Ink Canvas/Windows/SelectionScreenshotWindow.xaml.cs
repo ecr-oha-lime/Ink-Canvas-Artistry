@@ -147,7 +147,7 @@ namespace Ink_Canvas.Windows
 
         private void ToggleHideInk_Checked(object sender, RoutedEventArgs e)
         {
-            HintTextBlock.Text = "隐藏墨迹（占位）";
+            HintTextBlock.Text = "已开启：截图时临时隐藏墨迹";
         }
 
         private void ToggleHideInk_Unchecked(object sender, RoutedEventArgs e)
