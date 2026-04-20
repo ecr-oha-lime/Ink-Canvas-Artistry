@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows;
+using System.Windows.Ink;
+using System.Windows.Threading;
 
 namespace Ink_Canvas
 {
@@ -89,6 +91,34 @@ namespace Ink_Canvas
                 {
                     SaveInkCanvasFile(false, false);
                 }
+            }
+        }
+
+
+
+        /// <summary>
+        /// 获取用于选区截图的位图，可按需临时隐藏墨迹。
+        /// </summary>
+        private Bitmap GetScreenshotBitmapForSelection(bool hideInk)
+        {
+            if (!hideInk)
+            {
+                return GetScreenshotBitmap();
+            }
+
+            StrokeCollection strokesBackup = inkCanvas.Strokes.Clone();
+            Visibility selectionCoverVisibility = GridInkCanvasSelectionCover.Visibility;
+            try
+            {
+                inkCanvas.Strokes.Clear();
+                GridInkCanvasSelectionCover.Visibility = Visibility.Collapsed;
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                return GetScreenshotBitmap();
+            }
+            finally
+            {
+                inkCanvas.Strokes = strokesBackup;
+                GridInkCanvasSelectionCover.Visibility = selectionCoverVisibility;
             }
         }
 

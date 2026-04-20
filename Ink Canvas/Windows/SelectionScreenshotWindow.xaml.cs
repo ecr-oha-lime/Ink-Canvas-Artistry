@@ -27,6 +27,7 @@ namespace Ink_Canvas.Windows
     {
         private readonly Bitmap _fullScreenshot;
         private readonly Rectangle _virtualScreenBounds;
+        private readonly Func<bool, Bitmap> _screenshotProvider;
         private SelectionScreenshotMode _mode = SelectionScreenshotMode.Rectangle;
         private bool _isSelecting;
         private Point _startPoint;
@@ -35,11 +36,12 @@ namespace Ink_Canvas.Windows
         public SelectionScreenshotAction ActionResult { get; private set; } = SelectionScreenshotAction.Cancel;
         public Bitmap CapturedBitmap { get; private set; }
 
-        public SelectionScreenshotWindow(Bitmap screenshot, Rectangle virtualScreenBounds)
+        public SelectionScreenshotWindow(Bitmap screenshot, Rectangle virtualScreenBounds, Func<bool, Bitmap> screenshotProvider)
         {
             InitializeComponent();
             _fullScreenshot = screenshot;
             _virtualScreenBounds = virtualScreenBounds;
+            _screenshotProvider = screenshotProvider;
             UpdateModeVisualState();
         }
 
@@ -224,22 +226,28 @@ namespace Ink_Canvas.Windows
 
         private Bitmap BuildCaptureBitmap()
         {
-            return _mode == SelectionScreenshotMode.Rectangle ? CaptureRectangle() : CaptureFreehand();
+            bool hideInk = ToggleHideInk.IsChecked == true;
+            using (Bitmap screenshot = hideInk ? _screenshotProvider(true) : (Bitmap)_fullScreenshot.Clone())
+            {
+                return _mode == SelectionScreenshotMode.Rectangle
+                    ? CaptureRectangle(screenshot)
+                    : CaptureFreehand(screenshot);
+            }
         }
 
-        private Bitmap CaptureRectangle()
+        private Bitmap CaptureRectangle(Bitmap screenshot)
         {
             if (SelectionRect.Width < 5 || SelectionRect.Height < 5) return null;
 
             var left = System.Windows.Controls.Canvas.GetLeft(SelectionRect);
             var top = System.Windows.Controls.Canvas.GetTop(SelectionRect);
-            var deviceRect = BuildDeviceRect(new Rect(left, top, SelectionRect.Width, SelectionRect.Height));
+            var deviceRect = BuildDeviceRect(new Rect(left, top, SelectionRect.Width, SelectionRect.Height), screenshot);
             if (deviceRect.Width < 5 || deviceRect.Height < 5) return null;
 
             var result = new Bitmap((int)deviceRect.Width, (int)deviceRect.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(result))
             {
-                g.DrawImage(_fullScreenshot,
+                g.DrawImage(screenshot,
                     new System.Drawing.Rectangle(0, 0, result.Width, result.Height),
                     new System.Drawing.Rectangle((int)deviceRect.X, (int)deviceRect.Y, (int)deviceRect.Width, (int)deviceRect.Height),
                     GraphicsUnit.Pixel);
@@ -247,14 +255,14 @@ namespace Ink_Canvas.Windows
             return result;
         }
 
-        private Bitmap CaptureFreehand()
+        private Bitmap CaptureFreehand(Bitmap screenshot)
         {
             if (_freehandPoints.Count < 3 || SelectionPath.Data == null) return null;
 
             var sourcePoints = BuildDevicePoints(_freehandPoints);
             if (sourcePoints.Count < 3) return null;
 
-            var bounds = BuildBounds(sourcePoints);
+            var bounds = BuildBounds(sourcePoints, screenshot);
             if (bounds.Width < 5 || bounds.Height < 5) return null;
 
             var result = new Bitmap((int)Math.Ceiling(bounds.Width), (int)Math.Ceiling(bounds.Height), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
@@ -271,7 +279,7 @@ namespace Ink_Canvas.Windows
                     if (polygon.Count < 3) return null;
                     gp.AddPolygon(polygon.ToArray());
                     g.SetClip(gp);
-                    g.DrawImage(_fullScreenshot,
+                    g.DrawImage(screenshot,
                         new System.Drawing.Rectangle(0, 0, result.Width, result.Height),
                         new System.Drawing.Rectangle((int)bounds.X, (int)bounds.Y, result.Width, result.Height),
                         GraphicsUnit.Pixel);
@@ -281,11 +289,11 @@ namespace Ink_Canvas.Windows
             return result;
         }
 
-        private Rect BuildDeviceRect(Rect uiRect)
+        private Rect BuildDeviceRect(Rect uiRect, Bitmap screenshot)
         {
             var p1 = MapUiPointToScreenshot(new Point(uiRect.Left, uiRect.Top));
             var p2 = MapUiPointToScreenshot(new Point(uiRect.Right, uiRect.Bottom));
-            return ClampToBitmap(new Rect(Math.Min(p1.X, p2.X), Math.Min(p1.Y, p2.Y), Math.Abs(p2.X - p1.X), Math.Abs(p2.Y - p1.Y)));
+            return ClampToBitmap(new Rect(Math.Min(p1.X, p2.X), Math.Min(p1.Y, p2.Y), Math.Abs(p2.X - p1.X), Math.Abs(p2.Y - p1.Y)), screenshot);
         }
 
         private List<Point> BuildDevicePoints(List<Point> points)
@@ -311,7 +319,7 @@ namespace Ink_Canvas.Windows
             return new Point(screenPoint.X - _virtualScreenBounds.X, screenPoint.Y - _virtualScreenBounds.Y);
         }
 
-        private Rect BuildBounds(List<Point> points)
+        private Rect BuildBounds(List<Point> points, Bitmap screenshot)
         {
             double minX = double.MaxValue;
             double minY = double.MaxValue;
@@ -326,15 +334,15 @@ namespace Ink_Canvas.Windows
                 maxY = Math.Max(maxY, point.Y);
             }
 
-            return ClampToBitmap(new Rect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)));
+            return ClampToBitmap(new Rect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)), screenshot);
         }
 
-        private Rect ClampToBitmap(Rect rect)
+        private Rect ClampToBitmap(Rect rect, Bitmap screenshot)
         {
             double x = Math.Max(0, rect.X);
             double y = Math.Max(0, rect.Y);
-            double right = Math.Min(_fullScreenshot.Width, rect.X + rect.Width);
-            double bottom = Math.Min(_fullScreenshot.Height, rect.Y + rect.Height);
+            double right = Math.Min(screenshot.Width, rect.X + rect.Width);
+            double bottom = Math.Min(screenshot.Height, rect.Y + rect.Height);
             return new Rect(x, y, Math.Max(0, right - x), Math.Max(0, bottom - y));
         }
 

@@ -340,7 +340,7 @@ namespace Ink_Canvas
             using (var screenshot = GetScreenshotBitmap())
             {
                 var virtualScreenBounds = System.Windows.Forms.SystemInformation.VirtualScreen;
-                var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone(), virtualScreenBounds);
+                var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone(), virtualScreenBounds, GetScreenshotBitmapForSelection);
                 bool? dialogResult = window.ShowDialog();
                 if (dialogResult != true || window.CapturedBitmap == null)
                 {
