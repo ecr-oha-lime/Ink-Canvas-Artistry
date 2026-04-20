@@ -337,35 +337,45 @@ namespace Ink_Canvas
             HideSubPanelsImmediately();
             await Task.Delay(50);
 
-            using (var screenshot = GetScreenshotBitmap())
-            {
-                var virtualScreenBounds = System.Windows.Forms.SystemInformation.VirtualScreen;
-                var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone(), virtualScreenBounds, GetScreenshotBitmapForSelection);
-                bool? dialogResult = window.ShowDialog();
-                if (dialogResult != true || window.CapturedBitmap == null)
-                {
-                    return;
-                }
+            Visibility floatingBarVisibility = ViewboxFloatingBar.Visibility;
+            ViewboxFloatingBar.Visibility = Visibility.Collapsed;
 
-                using (var result = window.CapturedBitmap)
+            try
+            {
+                using (var screenshot = GetScreenshotBitmap())
                 {
-                    if (window.ActionResult == SelectionScreenshotAction.SaveToDesktop)
+                    var virtualScreenBounds = System.Windows.Forms.SystemInformation.VirtualScreen;
+                    var window = new SelectionScreenshotWindow((System.Drawing.Bitmap)screenshot.Clone(), virtualScreenBounds, GetScreenshotBitmapForSelection);
+                    bool? dialogResult = window.ShowDialog();
+                    if (dialogResult != true || window.CapturedBitmap == null)
                     {
-                        SaveBitmapToDesktop(result, true);
-                        if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
-                        {
-                            SaveInkCanvasFile(false, false);
-                        }
+                        return;
                     }
-                    else if (window.ActionResult == SelectionScreenshotAction.AddToBoard)
+
+                    using (var result = window.CapturedBitmap)
                     {
-                        using (var boardBitmap = (System.Drawing.Bitmap)result.Clone())
+                        if (window.ActionResult == SelectionScreenshotAction.SaveToDesktop)
                         {
-                            AddBitmapToBoard(boardBitmap);
+                            SaveBitmapToDesktop(result, true);
+                            if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+                            {
+                                SaveInkCanvasFile(false, false);
+                            }
                         }
-                        ShowNotificationAsync("选区截图已添加到白板");
+                        else if (window.ActionResult == SelectionScreenshotAction.AddToBoard)
+                        {
+                            using (var boardBitmap = (System.Drawing.Bitmap)result.Clone())
+                            {
+                                AddBitmapToBoard(boardBitmap);
+                            }
+                            ShowNotificationAsync("选区截图已添加到白板");
+                        }
                     }
                 }
+            }
+            finally
+            {
+                ViewboxFloatingBar.Visibility = floatingBarVisibility;
             }
         }
 
