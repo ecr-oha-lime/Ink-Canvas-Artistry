@@ -235,7 +235,7 @@ namespace Ink_Canvas.Windows
                 DeleteObject(hBitmap);
             }
 
-            var image = new Image
+            var image = new System.Windows.Controls.Image
             {
                 Source = source,
                 Stretch = Stretch.Fill
@@ -268,7 +268,7 @@ namespace Ink_Canvas.Windows
                 Width = _virtualScreenBounds.Width,
                 Height = _virtualScreenBounds.Height,
                 Content = grid,
-                Background = Brushes.Black,
+                Background = System.Windows.Media.Brushes.Black,
                 IsHitTestVisible = false
             };
 
