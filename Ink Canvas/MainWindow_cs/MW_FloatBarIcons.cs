@@ -1082,9 +1082,13 @@ namespace Ink_Canvas
                         RestoreStrokes();
 
                         Topmost = false;
-                        CloseMagnifierWindow();
                         break;
                 }
+            }
+
+            if (currentMode != 0)
+            {
+                CloseMagnifierWindow();
             }
 
             UpdateMagnifierToolButtonVisibility();

@@ -25,6 +25,7 @@ namespace Ink_Canvas.Windows
         private bool _isLeftHandle;
         private System.Windows.Point _resizeStartPoint;
         private double _resizeStartWidth;
+        private double _resizeStartLeft;
 
         private uint _selfOriginalAffinity = WdaNone;
         private uint _mainOriginalAffinity = WdaNone;
@@ -32,12 +33,6 @@ namespace Ink_Canvas.Windows
         private bool _hasMainOriginalAffinity;
 
         public event EventHandler RequestClose;
-
-        private static bool IsExcludeFromCaptureSupported()
-        {
-            Version osVersion = Environment.OSVersion.Version;
-            return osVersion.Major >= 10 && (osVersion.Build >= 19041 || osVersion.Major > 10);
-        }
 
         private static bool TrySetWindowAffinity(IntPtr windowHandle, uint affinity)
         {
@@ -87,9 +82,7 @@ namespace Ink_Canvas.Windows
             }
 
             // magnifier 自身优先使用 WDA_MONITOR，确保被任何桌面捕获路径排除，避免递归放大。
-            uint targetAffinity = isMainWindow
-                ? (IsExcludeFromCaptureSupported() ? WdaExcludeFromCapture : WdaMonitor)
-                : WdaMonitor;
+            uint targetAffinity = isMainWindow ? WdaExcludeFromCapture : WdaMonitor;
 
             if (!TrySetWindowAffinity(windowHandle, targetAffinity))
             {
@@ -282,6 +275,7 @@ namespace Ink_Canvas.Windows
                 _isLeftHandle = string.Equals(element.Tag as string, "Left", StringComparison.OrdinalIgnoreCase);
                 _resizeStartPoint = PointToScreen(e.GetPosition(this));
                 _resizeStartWidth = Width;
+                _resizeStartLeft = Left;
                 element.CaptureMouse();
                 e.Handled = true;
             }
@@ -309,7 +303,7 @@ namespace Ink_Canvas.Windows
 
             if (_isLeftHandle)
             {
-                Left = Left + (_resizeStartWidth - newWidth);
+                Left = _resizeStartLeft + (_resizeStartWidth - newWidth);
             }
         }
 
