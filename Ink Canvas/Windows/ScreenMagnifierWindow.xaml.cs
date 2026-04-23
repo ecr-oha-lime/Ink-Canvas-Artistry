@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using WinForms = System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -31,6 +32,11 @@ namespace Ink_Canvas.Windows
         private uint _mainOriginalAffinity = WdaNone;
         private bool _hasSelfOriginalAffinity;
         private bool _hasMainOriginalAffinity;
+
+        private bool _useLegacySnapshotMode;
+        private Bitmap _legacyScreenBitmap;
+        private Rect _virtualScreenBounds;
+        private Window _legacyOverlayWindow;
 
         public event EventHandler RequestClose;
 
@@ -63,6 +69,12 @@ namespace Ink_Canvas.Windows
             }
         }
 
+        private static bool IsWindows7()
+        {
+            Version osVersion = Environment.OSVersion.Version;
+            return osVersion.Major == 6 && osVersion.Minor == 1;
+        }
+
         private void ApplyCaptureExclusion(IntPtr windowHandle, bool isMainWindow)
         {
             if (windowHandle == IntPtr.Zero) return;
@@ -84,9 +96,15 @@ namespace Ink_Canvas.Windows
             // magnifier 自身优先使用 WDA_MONITOR，确保被任何桌面捕获路径排除，避免递归放大。
             uint targetAffinity = isMainWindow ? WdaExcludeFromCapture : WdaMonitor;
 
-            if (!TrySetWindowAffinity(windowHandle, targetAffinity))
+            bool applied = TrySetWindowAffinity(windowHandle, targetAffinity);
+            if (!applied)
             {
-                _ = TrySetWindowAffinity(windowHandle, WdaMonitor);
+                applied = TrySetWindowAffinity(windowHandle, WdaMonitor);
+            }
+
+            if (isMainWindow && !applied && IsWindows7())
+            {
+                _useLegacySnapshotMode = true;
             }
         }
 
@@ -131,9 +149,19 @@ namespace Ink_Canvas.Windows
 
         private void ScreenMagnifierWindow_SourceInitialized(object sender, EventArgs e)
         {
+            if (IsWindows7())
+            {
+                _useLegacySnapshotMode = true;
+            }
+
             IntPtr magnifierHandle = new WindowInteropHelper(this).Handle;
             ApplyCaptureExclusion(magnifierHandle, false);
             ApplyCaptureExclusion(_mainWindowHandle, true);
+
+            if (_useLegacySnapshotMode)
+            {
+                PrepareLegacySnapshotMode();
+            }
         }
 
         private void ScreenMagnifierWindow_Loaded(object sender, RoutedEventArgs e)
@@ -157,6 +185,10 @@ namespace Ink_Canvas.Windows
             }
 
             RefreshZoomLabel();
+            if (_useLegacySnapshotMode)
+            {
+                ShowLegacyOverlayWindow();
+            }
             _captureTimer.Start();
         }
 
@@ -168,7 +200,87 @@ namespace Ink_Canvas.Windows
             ClearCaptureExclusion(magnifierHandle, false);
             ClearCaptureExclusion(_mainWindowHandle, true);
 
+            CloseLegacyOverlayWindow();
+            _legacyScreenBitmap?.Dispose();
+            _legacyScreenBitmap = null;
+
             RequestClose?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void PrepareLegacySnapshotMode()
+        {
+            var virtualScreen = WinForms.SystemInformation.VirtualScreen;
+            _virtualScreenBounds = new Rect(virtualScreen.Left, virtualScreen.Top, virtualScreen.Width, virtualScreen.Height);
+            _legacyScreenBitmap?.Dispose();
+            _legacyScreenBitmap = CaptureMagnifierSourceBitmap(virtualScreen.Left, virtualScreen.Top, virtualScreen.Width, virtualScreen.Height);
+        }
+
+        private void ShowLegacyOverlayWindow()
+        {
+            if (_legacyScreenBitmap == null || _legacyOverlayWindow != null) return;
+
+            IntPtr hBitmap = _legacyScreenBitmap.GetHbitmap();
+            BitmapSource source;
+            try
+            {
+                source = Imaging.CreateBitmapSourceFromHBitmap(
+                    hBitmap,
+                    IntPtr.Zero,
+                    Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+                source.Freeze();
+            }
+            finally
+            {
+                DeleteObject(hBitmap);
+            }
+
+            var image = new Image
+            {
+                Source = source,
+                Stretch = Stretch.Fill
+            };
+
+            var text = new TextBlock
+            {
+                Text = "放大镜模式",
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(150, 255, 255, 255)),
+                FontSize = 42,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 24, 0, 0)
+            };
+
+            var grid = new Grid();
+            grid.Children.Add(image);
+            grid.Children.Add(text);
+
+            _legacyOverlayWindow = new Window
+            {
+                WindowStyle = WindowStyle.None,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false,
+                Topmost = true,
+                AllowsTransparency = false,
+                Left = _virtualScreenBounds.Left,
+                Top = _virtualScreenBounds.Top,
+                Width = _virtualScreenBounds.Width,
+                Height = _virtualScreenBounds.Height,
+                Content = grid,
+                Background = Brushes.Black,
+                IsHitTestVisible = false
+            };
+
+            _legacyOverlayWindow.Show();
+            Activate();
+        }
+
+        private void CloseLegacyOverlayWindow()
+        {
+            if (_legacyOverlayWindow == null) return;
+            _legacyOverlayWindow.Close();
+            _legacyOverlayWindow = null;
         }
 
         private Bitmap CaptureMagnifierSourceBitmap(int srcX, int srcY, int srcW, int srcH)
@@ -190,6 +302,36 @@ namespace Ink_Canvas.Windows
             }
 
             return bitmap;
+        }
+
+        private Bitmap CaptureFromLegacySnapshot(int srcX, int srcY, int srcW, int srcH)
+        {
+            if (_legacyScreenBitmap == null)
+            {
+                return CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH);
+            }
+
+            int relativeX = srcX - (int)_virtualScreenBounds.Left;
+            int relativeY = srcY - (int)_virtualScreenBounds.Top;
+
+            relativeX = Math.Max(0, Math.Min(_legacyScreenBitmap.Width - 1, relativeX));
+            relativeY = Math.Max(0, Math.Min(_legacyScreenBitmap.Height - 1, relativeY));
+
+            int width = Math.Min(srcW, _legacyScreenBitmap.Width - relativeX);
+            int height = Math.Min(srcH, _legacyScreenBitmap.Height - relativeY);
+            width = Math.Max(1, width);
+            height = Math.Max(1, height);
+
+            var target = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (Graphics g = Graphics.FromImage(target))
+            {
+                g.DrawImage(_legacyScreenBitmap,
+                    new Rectangle(0, 0, width, height),
+                    new Rectangle(relativeX, relativeY, width, height),
+                    GraphicsUnit.Pixel);
+            }
+
+            return target;
         }
 
         private void RenderMagnifiedFrame()
@@ -219,7 +361,7 @@ namespace Ink_Canvas.Windows
             int srcW = Math.Max(1, (int)Math.Round(sizeDev.X));
             int srcH = Math.Max(1, (int)Math.Round(sizeDev.Y));
 
-            using (var bitmap = CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH))
+            using (var bitmap = _useLegacySnapshotMode ? CaptureFromLegacySnapshot(srcX, srcY, srcW, srcH) : CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH))
             {
                 IntPtr hBitmap = bitmap.GetHbitmap();
                 try
