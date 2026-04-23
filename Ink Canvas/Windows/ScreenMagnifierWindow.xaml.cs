@@ -30,6 +30,7 @@ namespace Ink_Canvas.Windows
         private uint _mainOriginalAffinity = WdaNone;
         private bool _hasSelfOriginalAffinity;
         private bool _hasMainOriginalAffinity;
+        private bool _isSelfAffinityApplied;
 
         public event EventHandler RequestClose;
 
@@ -91,9 +92,15 @@ namespace Ink_Canvas.Windows
                 ? (IsExcludeFromCaptureSupported() ? WdaExcludeFromCapture : WdaMonitor)
                 : WdaMonitor;
 
-            if (!TrySetWindowAffinity(windowHandle, targetAffinity))
+            bool applied = TrySetWindowAffinity(windowHandle, targetAffinity);
+            if (!applied)
             {
-                _ = TrySetWindowAffinity(windowHandle, WdaMonitor);
+                applied = TrySetWindowAffinity(windowHandle, WdaMonitor);
+            }
+
+            if (!isMainWindow)
+            {
+                _isSelfAffinityApplied = applied;
             }
         }
 
@@ -112,6 +119,7 @@ namespace Ink_Canvas.Windows
             }
 
             _ = TrySetWindowAffinity(windowHandle, affinityToRestore);
+            if (!isMainWindow) _isSelfAffinityApplied = false;
         }
 
         public ScreenMagnifierWindow(IntPtr mainWindowHandle)
@@ -174,6 +182,42 @@ namespace Ink_Canvas.Windows
             RequestClose?.Invoke(this, EventArgs.Empty);
         }
 
+        private Bitmap CaptureMagnifierSourceBitmap(int srcX, int srcY, int srcW, int srcH)
+        {
+            var bitmap = new Bitmap(srcW, srcH, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (Graphics g = Graphics.FromImage(bitmap))
+            {
+                g.CopyFromScreen(srcX, srcY, 0, 0, new System.Drawing.Size(srcW, srcH), CopyPixelOperation.SourceCopy);
+            }
+
+            return bitmap;
+        }
+
+        private Bitmap CaptureMagnifierSourceBitmapWithFallback(int srcX, int srcY, int srcW, int srcH)
+        {
+            if (_isSelfAffinityApplied)
+            {
+                return CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH);
+            }
+
+            double oldOpacity = Opacity;
+            bool oldHitTestVisible = IsHitTestVisible;
+
+            try
+            {
+                Opacity = 0;
+                IsHitTestVisible = false;
+                UpdateLayout();
+                DwmFlush();
+                return CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH);
+            }
+            finally
+            {
+                Opacity = oldOpacity;
+                IsHitTestVisible = oldHitTestVisible;
+            }
+        }
+
         private void RenderMagnifiedFrame()
         {
             if (!IsLoaded || ImageViewport == null || ZoomSlider == null || ActualWidth < 40 || ActualHeight < 60) return;
@@ -201,13 +245,8 @@ namespace Ink_Canvas.Windows
             int srcW = Math.Max(1, (int)Math.Round(sizeDev.X));
             int srcH = Math.Max(1, (int)Math.Round(sizeDev.Y));
 
-            using (var bitmap = new Bitmap(srcW, srcH, System.Drawing.Imaging.PixelFormat.Format32bppPArgb))
+            using (var bitmap = CaptureMagnifierSourceBitmapWithFallback(srcX, srcY, srcW, srcH))
             {
-                using (Graphics g = Graphics.FromImage(bitmap))
-                {
-                    g.CopyFromScreen(srcX, srcY, 0, 0, new System.Drawing.Size(srcW, srcH), CopyPixelOperation.SourceCopy);
-                }
-
                 IntPtr hBitmap = bitmap.GetHbitmap();
                 try
                 {
@@ -311,5 +350,8 @@ namespace Ink_Canvas.Windows
 
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmFlush();
     }
 }
