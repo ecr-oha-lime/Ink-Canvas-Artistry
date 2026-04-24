@@ -37,6 +37,7 @@ namespace Ink_Canvas.Windows
         private Bitmap _legacyScreenBitmap;
         private Rect _virtualScreenBounds;
         private Window _legacyOverlayWindow;
+        private IntPtr _magnifierWindowHandle = IntPtr.Zero;
 
         public event EventHandler RequestClose;
 
@@ -138,6 +139,7 @@ namespace Ink_Canvas.Windows
 
             SourceInitialized += ScreenMagnifierWindow_SourceInitialized;
             Loaded += ScreenMagnifierWindow_Loaded;
+            Closing += ScreenMagnifierWindow_Closing;
             Closed += ScreenMagnifierWindow_Closed;
         }
 
@@ -154,8 +156,8 @@ namespace Ink_Canvas.Windows
                 _useLegacySnapshotMode = true;
             }
 
-            IntPtr magnifierHandle = new WindowInteropHelper(this).Handle;
-            ApplyCaptureExclusion(magnifierHandle, false);
+            _magnifierWindowHandle = new WindowInteropHelper(this).Handle;
+            ApplyCaptureExclusion(_magnifierWindowHandle, false);
             ApplyCaptureExclusion(_mainWindowHandle, true);
 
             if (_useLegacySnapshotMode)
@@ -189,20 +191,24 @@ namespace Ink_Canvas.Windows
             {
                 ShowLegacyOverlayWindow();
             }
+            Topmost = true;
             _captureTimer.Start();
+        }
+
+        private void ScreenMagnifierWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            ClearCaptureExclusion(_magnifierWindowHandle, false);
+            ClearCaptureExclusion(_mainWindowHandle, true);
         }
 
         private void ScreenMagnifierWindow_Closed(object sender, EventArgs e)
         {
             _captureTimer.Stop();
 
-            IntPtr magnifierHandle = new WindowInteropHelper(this).Handle;
-            ClearCaptureExclusion(magnifierHandle, false);
-            ClearCaptureExclusion(_mainWindowHandle, true);
-
             CloseLegacyOverlayWindow();
             _legacyScreenBitmap?.Dispose();
             _legacyScreenBitmap = null;
+            _magnifierWindowHandle = IntPtr.Zero;
 
             RequestClose?.Invoke(this, EventArgs.Empty);
         }
@@ -261,16 +267,30 @@ namespace Ink_Canvas.Windows
                 WindowStyle = WindowStyle.None,
                 ResizeMode = ResizeMode.NoResize,
                 ShowInTaskbar = false,
-                Topmost = true,
+                ShowActivated = false,
+                Topmost = false,
                 AllowsTransparency = false,
-                Left = _virtualScreenBounds.Left,
-                Top = _virtualScreenBounds.Top,
-                Width = _virtualScreenBounds.Width,
-                Height = _virtualScreenBounds.Height,
                 Content = grid,
                 Background = System.Windows.Media.Brushes.Black,
                 IsHitTestVisible = false
             };
+
+            PresentationSource sourceVisual = PresentationSource.FromVisual(this);
+            if (sourceVisual?.CompositionTarget != null)
+            {
+                Rect dipBounds = Rect.Transform(_virtualScreenBounds, sourceVisual.CompositionTarget.TransformFromDevice);
+                _legacyOverlayWindow.Left = dipBounds.Left;
+                _legacyOverlayWindow.Top = dipBounds.Top;
+                _legacyOverlayWindow.Width = dipBounds.Width;
+                _legacyOverlayWindow.Height = dipBounds.Height;
+            }
+            else
+            {
+                _legacyOverlayWindow.Left = _virtualScreenBounds.Left;
+                _legacyOverlayWindow.Top = _virtualScreenBounds.Top;
+                _legacyOverlayWindow.Width = _virtualScreenBounds.Width;
+                _legacyOverlayWindow.Height = _virtualScreenBounds.Height;
+            }
 
             _legacyOverlayWindow.Show();
             Activate();
@@ -290,9 +310,14 @@ namespace Ink_Canvas.Windows
             {
                 IntPtr dstHdc = g.GetHdc();
                 IntPtr srcHdc = GetDC(IntPtr.Zero);
+                if (srcHdc == IntPtr.Zero)
+                {
+                    g.ReleaseHdc(dstHdc);
+                    return bitmap;
+                }
                 try
                 {
-                    BitBlt(dstHdc, 0, 0, srcW, srcH, srcHdc, srcX, srcY, SRCCOPY);
+                    _ = BitBlt(dstHdc, 0, 0, srcW, srcH, srcHdc, srcX, srcY, SRCCOPY);
                 }
                 finally
                 {
@@ -313,22 +338,40 @@ namespace Ink_Canvas.Windows
 
             int relativeX = srcX - (int)_virtualScreenBounds.Left;
             int relativeY = srcY - (int)_virtualScreenBounds.Top;
+            int destX = 0;
+            int destY = 0;
+            int width = srcW;
+            int height = srcH;
 
-            relativeX = Math.Max(0, Math.Min(_legacyScreenBitmap.Width - 1, relativeX));
-            relativeY = Math.Max(0, Math.Min(_legacyScreenBitmap.Height - 1, relativeY));
+            if (relativeX < 0)
+            {
+                destX = -relativeX;
+                width -= destX;
+                relativeX = 0;
+            }
+            if (relativeY < 0)
+            {
+                destY = -relativeY;
+                height -= destY;
+                relativeY = 0;
+            }
 
-            int width = Math.Min(srcW, _legacyScreenBitmap.Width - relativeX);
-            int height = Math.Min(srcH, _legacyScreenBitmap.Height - relativeY);
-            width = Math.Max(1, width);
-            height = Math.Max(1, height);
+            width = Math.Min(width, _legacyScreenBitmap.Width - relativeX);
+            height = Math.Min(height, _legacyScreenBitmap.Height - relativeY);
+            width = Math.Max(0, width);
+            height = Math.Max(0, height);
 
-            var target = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            var target = new Bitmap(Math.Max(1, srcW), Math.Max(1, srcH), System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
             using (Graphics g = Graphics.FromImage(target))
             {
-                g.DrawImage(_legacyScreenBitmap,
-                    new Rectangle(0, 0, width, height),
-                    new Rectangle(relativeX, relativeY, width, height),
-                    GraphicsUnit.Pixel);
+                g.Clear(System.Drawing.Color.Black);
+                if (width > 0 && height > 0)
+                {
+                    g.DrawImage(_legacyScreenBitmap,
+                        new Rectangle(destX, destY, width, height),
+                        new Rectangle(relativeX, relativeY, width, height),
+                        GraphicsUnit.Pixel);
+                }
             }
 
             return target;

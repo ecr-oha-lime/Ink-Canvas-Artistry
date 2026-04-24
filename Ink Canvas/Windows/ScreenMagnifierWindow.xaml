@@ -70,20 +70,24 @@
                         Height="28"
                         Margin="0,0,8,0"
                         VerticalAlignment="Center"
+                        AutomationProperties.Name="减小放大倍率"
                         Background="#FF374151"
                         BorderBrush="#FFF9FAFB"
                         BorderThickness="1"
                         Click="BtnZoomOut_Click"
                         Content="-"
-                        Foreground="#FFF9FAFB" />
+                        Foreground="#FFF9FAFB"
+                        ToolTip="减小放大倍率" />
 
                     <Slider
                         x:Name="ZoomSlider"
                         Grid.Column="2"
+                        AutomationProperties.Name="放大倍率滑块"
                         Minimum="1.5"
                         Maximum="5"
                         SmallChange="0.1"
                         LargeChange="0.5"
+                        ToolTip="拖动调整放大倍率"
                         ValueChanged="ZoomSlider_ValueChanged"
                         Value="2.5"
                         VerticalAlignment="Center" />
@@ -94,12 +98,14 @@
                         Height="28"
                         Margin="8,0,8,0"
                         VerticalAlignment="Center"
+                        AutomationProperties.Name="增大放大倍率"
                         Background="#FF374151"
                         BorderBrush="#FFF9FAFB"
                         BorderThickness="1"
                         Click="BtnZoomIn_Click"
                         Content="+"
-                        Foreground="#FFF9FAFB" />
+                        Foreground="#FFF9FAFB"
+                        ToolTip="增大放大倍率" />
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock
@@ -113,12 +119,14 @@
                             Width="28"
                             Height="28"
                             VerticalAlignment="Center"
+                            AutomationProperties.Name="关闭放大镜"
                             Background="#FFB91C1C"
                             BorderBrush="#FFF9FAFB"
                             BorderThickness="1"
                             Click="BtnClose_Click"
                             Content="×"
-                            Foreground="White" />
+                            Foreground="White"
+                            ToolTip="关闭放大镜" />
                     </StackPanel>
                 </Grid>
             </Border>
