@@ -178,8 +178,8 @@ namespace Ink_Canvas.Windows
                 Matrix fromDevice = source.CompositionTarget.TransformFromDevice;
                 var cursor = WinForms.Cursor.Position;
                 WinForms.Screen screen = WinForms.Screen.FromPoint(cursor);
-                Rect workAreaPx = new Rect(screen.WorkingArea.Left, screen.WorkingArea.Top, screen.WorkingArea.Width, screen.WorkingArea.Height);
-                Rect workAreaDip = Rect.Transform(workAreaPx, fromDevice);
+                Rect screenBoundsPx = new Rect(screen.Bounds.Left, screen.Bounds.Top, screen.Bounds.Width, screen.Bounds.Height);
+                Rect workAreaDip = Rect.Transform(screenBoundsPx, fromDevice);
 
                 Left = workAreaDip.Left + (workAreaDip.Width - Width) / 2;
                 Top = workAreaDip.Top + (workAreaDip.Height - Height) / 2;
@@ -253,7 +253,7 @@ namespace Ink_Canvas.Windows
             var image = new System.Windows.Controls.Image
             {
                 Source = source,
-                Stretch = Stretch.UniformToFill
+                Stretch = Stretch.Fill
             };
 
             var text = new TextBlock
@@ -281,8 +281,9 @@ namespace Ink_Canvas.Windows
                 AllowsTransparency = false,
                 Content = grid,
                 Background = System.Windows.Media.Brushes.Black,
-                IsHitTestVisible = false
+                IsHitTestVisible = true
             };
+            _legacyOverlayWindow.MouseDown += (_, __) => Activate();
 
             PresentationSource sourceVisual = PresentationSource.FromVisual(this);
             if (sourceVisual?.CompositionTarget != null)
@@ -408,14 +409,17 @@ namespace Ink_Canvas.Windows
             Matrix toDevice = source.CompositionTarget.TransformToDevice;
 
             double zoom = ZoomSlider.Value;
+            const double topResizeHandleDip = 10;
             const double barHeightDip = 42;
+            double viewportHeightDip = ActualHeight - barHeightDip - topResizeHandleDip;
+            if (viewportHeightDip <= 1) return;
 
             double captureWidthDip = ActualWidth / zoom;
-            double captureHeightDip = (ActualHeight - barHeightDip) / zoom;
+            double captureHeightDip = viewportHeightDip / zoom;
             if (captureWidthDip < 1 || captureHeightDip < 1) return;
 
             double centerXDip = Left + ActualWidth / 2;
-            double centerYDip = Top + (ActualHeight - barHeightDip) / 2;
+            double centerYDip = Top + topResizeHandleDip + viewportHeightDip / 2;
 
             System.Windows.Point topLeftDev = toDevice.Transform(
                 new System.Windows.Point(centerXDip - captureWidthDip / 2, centerYDip - captureHeightDip / 2));
