@@ -224,10 +224,11 @@ namespace Ink_Canvas.Windows
 
         private void PrepareLegacySnapshotMode()
         {
-            var virtualScreen = WinForms.SystemInformation.VirtualScreen;
-            _virtualScreenBounds = new Rect(virtualScreen.Left, virtualScreen.Top, virtualScreen.Width, virtualScreen.Height);
+            var cursor = WinForms.Cursor.Position;
+            WinForms.Screen screen = WinForms.Screen.FromPoint(cursor);
+            _virtualScreenBounds = new Rect(screen.Bounds.Left, screen.Bounds.Top, screen.Bounds.Width, screen.Bounds.Height);
             _legacyScreenBitmap?.Dispose();
-            _legacyScreenBitmap = CaptureMagnifierSourceBitmap(virtualScreen.Left, virtualScreen.Top, virtualScreen.Width, virtualScreen.Height);
+            _legacyScreenBitmap = CaptureMagnifierSourceBitmap(screen.Bounds.Left, screen.Bounds.Top, screen.Bounds.Width, screen.Bounds.Height);
         }
 
         private void ShowLegacyOverlayWindow()
@@ -278,9 +279,9 @@ namespace Ink_Canvas.Windows
                 ShowInTaskbar = false,
                 ShowActivated = false,
                 Topmost = false,
-                AllowsTransparency = true,
+                AllowsTransparency = false,
                 Content = grid,
-                Background = System.Windows.Media.Brushes.Transparent,
+                Background = System.Windows.Media.Brushes.Black,
                 IsHitTestVisible = true
             };
             _legacyOverlayWindow.MouseDown += (_, __) => Activate();
@@ -296,10 +297,10 @@ namespace Ink_Canvas.Windows
             }
             else
             {
-                _legacyOverlayWindow.Left = _virtualScreenBounds.Left;
-                _legacyOverlayWindow.Top = _virtualScreenBounds.Top;
-                _legacyOverlayWindow.Width = _virtualScreenBounds.Width;
-                _legacyOverlayWindow.Height = _virtualScreenBounds.Height;
+                _legacyOverlayWindow.Left = 0;
+                _legacyOverlayWindow.Top = 0;
+                _legacyOverlayWindow.Width = SystemParameters.PrimaryScreenWidth;
+                _legacyOverlayWindow.Height = SystemParameters.PrimaryScreenHeight;
             }
 
             _legacyOverlayWindow.Show();
