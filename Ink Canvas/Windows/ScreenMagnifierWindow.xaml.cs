@@ -143,6 +143,7 @@ namespace Ink_Canvas.Windows
             SourceInitialized += ScreenMagnifierWindow_SourceInitialized;
             Loaded += ScreenMagnifierWindow_Loaded;
             Activated += ScreenMagnifierWindow_Activated;
+            Deactivated += ScreenMagnifierWindow_Deactivated;
             Closing += ScreenMagnifierWindow_Closing;
             Closed += ScreenMagnifierWindow_Closed;
         }
@@ -203,6 +204,16 @@ namespace Ink_Canvas.Windows
         private void ScreenMagnifierWindow_Activated(object sender, EventArgs e)
         {
             PlaceWindowBelowMainWindow();
+        }
+
+        private void ScreenMagnifierWindow_Deactivated(object sender, EventArgs e)
+        {
+            if (!_useLegacySnapshotMode || !IsVisible) return;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (IsVisible && !IsActive) Activate();
+            }), DispatcherPriority.Background);
         }
 
         private void ScreenMagnifierWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -283,9 +294,8 @@ namespace Ink_Canvas.Windows
                 AllowsTransparency = false,
                 Content = grid,
                 Background = System.Windows.Media.Brushes.Black,
-                IsHitTestVisible = true
+                IsHitTestVisible = false
             };
-            _legacyOverlayWindow.MouseDown += (_, __) => Activate();
 
             PresentationSource sourceVisual = PresentationSource.FromVisual(this);
             if (sourceVisual?.CompositionTarget != null)
