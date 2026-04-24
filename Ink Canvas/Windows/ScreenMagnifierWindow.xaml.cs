@@ -278,9 +278,9 @@ namespace Ink_Canvas.Windows
                 ShowInTaskbar = false,
                 ShowActivated = false,
                 Topmost = false,
-                AllowsTransparency = false,
+                AllowsTransparency = true,
                 Content = grid,
-                Background = System.Windows.Media.Brushes.Black,
+                Background = System.Windows.Media.Brushes.Transparent,
                 IsHitTestVisible = true
             };
             _legacyOverlayWindow.MouseDown += (_, __) => Activate();

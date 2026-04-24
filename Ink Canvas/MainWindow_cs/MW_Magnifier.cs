@@ -31,12 +31,18 @@ namespace Ink_Canvas
             if (magnifierWindow != null) return;
 
             IntPtr mainHandle = new WindowInteropHelper(this).Handle;
+            Visibility floatingBarVisibility = ViewboxFloatingBar.Visibility;
             magnifierWindow = new ScreenMagnifierWindow(mainHandle)
             {
                 Owner = this
             };
             magnifierWindow.RequestClose += MagnifierWindow_RequestClose;
+            ViewboxFloatingBar.Visibility = Visibility.Hidden;
             magnifierWindow.Show();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ViewboxFloatingBar.Visibility = floatingBarVisibility;
+            }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
 
         private void MagnifierWindow_RequestClose(object sender, EventArgs e)
