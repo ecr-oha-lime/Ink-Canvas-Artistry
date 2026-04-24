@@ -16,7 +16,20 @@
         CornerRadius="4"
         SnapsToDevicePixels="True">
         <Grid ClipToBounds="True" Background="#FF101317">
-            <Image x:Name="ImageViewport" Stretch="Fill" />
+            <Image
+                x:Name="ImageViewport"
+                Stretch="Fill"
+                MouseLeftButtonDown="DragHandle_MouseLeftButtonDown" />
+
+            <Border
+                x:Name="TopResizeHandle"
+                Height="10"
+                VerticalAlignment="Top"
+                Background="#10FFFFFF"
+                Cursor="SizeNS"
+                MouseLeftButtonDown="TopResizeHandle_MouseLeftButtonDown"
+                MouseLeftButtonUp="TopResizeHandle_MouseLeftButtonUp"
+                MouseMove="TopResizeHandle_MouseMove" />
 
             <Border
                 x:Name="LeftResizeHandle"

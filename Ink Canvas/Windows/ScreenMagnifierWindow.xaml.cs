@@ -27,6 +27,9 @@ namespace Ink_Canvas.Windows
         private System.Windows.Point _resizeStartPoint;
         private double _resizeStartWidth;
         private double _resizeStartLeft;
+        private bool _isTopResizing;
+        private double _resizeStartHeight;
+        private double _resizeStartTop;
 
         private uint _selfOriginalAffinity = WdaNone;
         private uint _mainOriginalAffinity = WdaNone;
@@ -139,6 +142,7 @@ namespace Ink_Canvas.Windows
 
             SourceInitialized += ScreenMagnifierWindow_SourceInitialized;
             Loaded += ScreenMagnifierWindow_Loaded;
+            Activated += ScreenMagnifierWindow_Activated;
             Closing += ScreenMagnifierWindow_Closing;
             Closed += ScreenMagnifierWindow_Closed;
         }
@@ -191,8 +195,13 @@ namespace Ink_Canvas.Windows
             {
                 ShowLegacyOverlayWindow();
             }
-            Topmost = true;
+            PlaceWindowBelowMainWindow();
             _captureTimer.Start();
+        }
+
+        private void ScreenMagnifierWindow_Activated(object sender, EventArgs e)
+        {
+            PlaceWindowBelowMainWindow();
         }
 
         private void ScreenMagnifierWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -244,7 +253,7 @@ namespace Ink_Canvas.Windows
             var image = new System.Windows.Controls.Image
             {
                 Source = source,
-                Stretch = Stretch.Fill
+                Stretch = Stretch.UniformToFill
             };
 
             var text = new TextBlock
@@ -294,6 +303,19 @@ namespace Ink_Canvas.Windows
 
             _legacyOverlayWindow.Show();
             Activate();
+        }
+
+        private void PlaceWindowBelowMainWindow()
+        {
+            if (_magnifierWindowHandle == IntPtr.Zero || _mainWindowHandle == IntPtr.Zero) return;
+            _ = SetWindowPos(
+                _magnifierWindowHandle,
+                _mainWindowHandle,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOREDRAW);
         }
 
         private void CloseLegacyOverlayWindow()
@@ -480,11 +502,7 @@ namespace Ink_Canvas.Windows
             double maxWidth = Math.Max(260, SystemParameters.WorkArea.Width * 0.95);
             double newWidth = Math.Max(260, Math.Min(maxWidth, _resizeStartWidth + delta));
 
-            double maxHeight = Math.Max(180, SystemParameters.WorkArea.Height * 0.8);
-            double newHeight = Math.Min(maxHeight, Math.Max(180, newWidth * 0.66));
-
             Width = newWidth;
-            Height = newHeight;
 
             if (_isLeftHandle)
             {
@@ -502,7 +520,48 @@ namespace Ink_Canvas.Windows
             }
         }
 
+        private void TopResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element)
+            {
+                _isTopResizing = true;
+                _resizeStartPoint = PointToScreen(e.GetPosition(this));
+                _resizeStartHeight = Height;
+                _resizeStartTop = Top;
+                element.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void TopResizeHandle_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (!_isTopResizing) return;
+
+            System.Windows.Point nowPoint = PointToScreen(e.GetPosition(this));
+            double deltaY = nowPoint.Y - _resizeStartPoint.Y;
+            double maxHeight = Math.Max(180, SystemParameters.WorkArea.Height * 0.95);
+            double newHeight = Math.Max(180, Math.Min(maxHeight, _resizeStartHeight - deltaY));
+
+            Height = newHeight;
+            Top = _resizeStartTop + (_resizeStartHeight - newHeight);
+        }
+
+        private void TopResizeHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element)
+            {
+                _isTopResizing = false;
+                element.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
         private const int SRCCOPY = 0x00CC0020;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOREDRAW = 0x0008;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_NOOWNERZORDER = 0x0200;
 
         [DllImport("gdi32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -513,6 +572,17 @@ namespace Ink_Canvas.Windows
 
         [DllImport("user32.dll")]
         private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDc);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int X,
+            int Y,
+            int cx,
+            int cy,
+            uint uFlags);
 
         [DllImport("user32.dll")]
         private static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
