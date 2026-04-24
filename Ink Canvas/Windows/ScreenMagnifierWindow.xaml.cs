@@ -161,6 +161,7 @@ namespace Ink_Canvas.Windows
             }
 
             _magnifierWindowHandle = new WindowInteropHelper(this).Handle;
+            EnsureWindowBorderless(_magnifierWindowHandle);
             ApplyCaptureExclusion(_magnifierWindowHandle, false);
             ApplyCaptureExclusion(_mainWindowHandle, true);
 
@@ -304,6 +305,7 @@ namespace Ink_Canvas.Windows
             }
 
             _legacyOverlayWindow.Show();
+            EnsureWindowBorderless(new WindowInteropHelper(_legacyOverlayWindow).Handle);
             Activate();
         }
 
@@ -567,6 +569,23 @@ namespace Ink_Canvas.Windows
         private const uint SWP_NOREDRAW = 0x0008;
         private const uint SWP_NOACTIVATE = 0x0010;
         private const uint SWP_NOOWNERZORDER = 0x0200;
+        private const uint SWP_FRAMECHANGED = 0x0020;
+        private const int GWL_STYLE = -16;
+        private const int WS_CAPTION = 0x00C00000;
+        private const int WS_THICKFRAME = 0x00040000;
+        private const int WS_SYSMENU = 0x00080000;
+        private const int WS_MINIMIZEBOX = 0x00020000;
+        private const int WS_MAXIMIZEBOX = 0x00010000;
+
+        private static void EnsureWindowBorderless(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero) return;
+            int style = GetWindowLong(hWnd, GWL_STYLE);
+            style &= ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+            SetWindowLong(hWnd, GWL_STYLE, style);
+            SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        }
 
         [DllImport("gdi32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -588,6 +607,12 @@ namespace Ink_Canvas.Windows
             int cx,
             int cy,
             uint uFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         [DllImport("user32.dll")]
         private static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
