@@ -1085,6 +1085,13 @@ namespace Ink_Canvas
                         break;
                 }
             }
+
+            if (currentMode != 0)
+            {
+                CloseMagnifierWindow();
+            }
+
+            UpdateMagnifierToolButtonVisibility();
         }
 
         int BoundsWidth = 5;

@@ -52,6 +52,7 @@ namespace Ink_Canvas
 
             ViewboxFloatingBar.Margin = new Thickness((SystemParameters.WorkArea.Width - 284) / 2, SystemParameters.WorkArea.Height - 60, -2000, -200);
             ViewboxFloatingBarMarginAnimation();
+            UpdateMagnifierToolButtonVisibility();
 
             try
             {
@@ -235,6 +236,7 @@ namespace Ink_Canvas
         /// </summary>
         private void Window_Closed(object sender, EventArgs e)
         {
+            CloseMagnifierWindow();
             LogHelper.WriteLogToFile("Ink Canvas closed", LogHelper.LogType.Event);
         }
 
