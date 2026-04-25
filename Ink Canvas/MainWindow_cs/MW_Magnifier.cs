@@ -16,6 +16,9 @@ namespace Ink_Canvas
                 return;
             }
 
+            AnimationsHelper.HideWithSlideAndFade(BorderTools);
+            AnimationsHelper.HideWithSlideAndFade(BoardBorderTools);
+
             if (magnifierWindow == null)
             {
                 OpenMagnifierWindow();

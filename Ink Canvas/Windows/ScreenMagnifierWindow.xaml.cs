@@ -393,7 +393,24 @@ namespace Ink_Canvas.Windows
         {
             if (_useLegacySnapshotMode)
             {
-                PrepareLegacySnapshotMode();
+                Visibility oldVisibility = Visibility;
+                bool oldHitTestVisible = IsHitTestVisible;
+                try
+                {
+                    IsHitTestVisible = false;
+                    Visibility = Visibility.Hidden;
+                    Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    PrepareLegacySnapshotMode();
+                }
+                finally
+                {
+                    Visibility = oldVisibility;
+                    IsHitTestVisible = oldHitTestVisible;
+                    if (oldVisibility == Visibility.Visible)
+                    {
+                        Activate();
+                    }
+                }
             }
 
             RenderMagnifiedFrame();
