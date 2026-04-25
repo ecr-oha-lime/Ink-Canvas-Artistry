@@ -10,6 +10,9 @@ namespace Ink_Canvas
     {
         private ScreenMagnifierWindow magnifierWindow;
 
+        /// <summary>
+        /// 浮动工具栏“放大镜”按钮点击：仅在普通屏幕模式下切换放大镜窗口，并收起工具菜单。
+        /// </summary>
         private void SymbolIconMagnifier_Click(object sender, RoutedEventArgs e)
         {
             if (currentMode != 0)
@@ -30,6 +33,9 @@ namespace Ink_Canvas
             }
         }
 
+        /// <summary>
+        /// 创建并显示放大镜窗口，同时在首帧截图阶段临时隐藏 FloatingBar，避免被纳入截图源。
+        /// </summary>
         private void OpenMagnifierWindow()
         {
             if (magnifierWindow != null) return;
@@ -49,6 +55,9 @@ namespace Ink_Canvas
             }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
 
+        /// <summary>
+        /// 放大镜窗口主动关闭时的回调：解除事件绑定并清空引用。
+        /// </summary>
         private void MagnifierWindow_RequestClose(object sender, EventArgs e)
         {
             if (magnifierWindow != null)
@@ -59,6 +68,9 @@ namespace Ink_Canvas
             magnifierWindow = null;
         }
 
+        /// <summary>
+        /// 关闭放大镜窗口并释放引用。
+        /// </summary>
         private void CloseMagnifierWindow()
         {
             if (magnifierWindow == null) return;
@@ -72,6 +84,9 @@ namespace Ink_Canvas
             magnifierWindow = null;
         }
 
+        /// <summary>
+        /// 根据当前模式控制放大镜入口按钮可见性：仅在普通屏幕模式显示。
+        /// </summary>
         private void UpdateMagnifierToolButtonVisibility()
         {
             if (BtnToolsMagnifier == null) return;

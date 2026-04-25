@@ -12,6 +12,10 @@ using System.Windows.Threading;
 
 namespace Ink_Canvas.Windows
 {
+    /// <summary>
+    /// 屏幕放大镜窗口：负责采样屏幕区域并在窗口内实时渲染放大视图，
+    /// 同时提供拖拽、缩放、刷新与窗口排除捕获等交互能力。
+    /// </summary>
     public partial class ScreenMagnifierWindow : Window
     {
         private const uint WdaNone = 0x00000000;
@@ -77,6 +81,9 @@ namespace Ink_Canvas.Windows
             return osVersion.Major == 6 && osVersion.Minor == 1;
         }
 
+        /// <summary>
+        /// 为目标窗口设置捕获排除策略，并记录原有显示亲和性以便恢复。
+        /// </summary>
         private void ApplyCaptureExclusion(IntPtr windowHandle, bool isMainWindow)
         {
             if (windowHandle == IntPtr.Zero) return;
@@ -110,6 +117,9 @@ namespace Ink_Canvas.Windows
             }
         }
 
+        /// <summary>
+        /// 恢复窗口原始显示亲和性设置。
+        /// </summary>
         private void ClearCaptureExclusion(IntPtr windowHandle, bool isMainWindow)
         {
             if (windowHandle == IntPtr.Zero) return;
@@ -215,6 +225,9 @@ namespace Ink_Canvas.Windows
             RequestClose?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// 进入 legacy 模式时抓取当前屏幕静态快照，作为后续放大采样源。
+        /// </summary>
         private void PrepareLegacySnapshotMode()
         {
             var cursor = WinForms.Cursor.Position;
@@ -311,6 +324,9 @@ namespace Ink_Canvas.Windows
             return target;
         }
 
+        /// <summary>
+        /// 计算当前视口对应的屏幕采样区域，并渲染一帧放大结果到界面。
+        /// </summary>
         private void RenderMagnifiedFrame()
         {
             if (!IsLoaded || ImageViewport == null || ZoomSlider == null || ActualWidth < 40 || ActualHeight < 60) return;
