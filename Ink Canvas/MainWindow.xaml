@@ -7054,9 +7054,12 @@
                                                 Text="更多设置" />
                                         </Border>
                                         <ikw:SimpleStackPanel HorizontalAlignment="Center">
-                                            <ikw:SimpleStackPanel
-                                                Height="45"
+                                            <WrapPanel
+                                                Width="135"
                                                 Margin="0,4,0,0"
+                                                HorizontalAlignment="Center"
+                                                ItemHeight="45"
+                                                ItemWidth="45"
                                                 Orientation="Horizontal">
                                                 <Button
                                                     Width="45"
@@ -7147,8 +7150,6 @@
                                                             Foreground="{DynamicResource FloatBarForeground}" />
                                                     </ikw:SimpleStackPanel>
                                                 </Button>
-                                            </ikw:SimpleStackPanel>
-                                            <ikw:SimpleStackPanel Height="45" Orientation="Horizontal">
                                                 <Button
                                                     Width="45"
                                                     Height="45"
@@ -7221,8 +7222,6 @@
                                                             Foreground="{DynamicResource FloatBarForeground}" />
                                                     </ikw:SimpleStackPanel>
                                                 </Button>
-                                            </ikw:SimpleStackPanel>
-                                            <ikw:SimpleStackPanel Height="45" Orientation="Horizontal">
                                                 <Button
                                                     Width="45"
                                                     Height="45"
@@ -7295,7 +7294,7 @@
                                                             Foreground="{DynamicResource FloatBarForeground}" />
                                                     </ikw:SimpleStackPanel>
                                                 </Button>
-                                            </ikw:SimpleStackPanel>
+                                            </WrapPanel>
                                         </ikw:SimpleStackPanel>
                                     </ikw:SimpleStackPanel>
                                 </Border>
