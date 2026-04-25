@@ -58,14 +58,15 @@
                 Height="42"
                 VerticalAlignment="Bottom"
                 Background="#CC1F2937">
-                <Grid Margin="10,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                    <Grid Margin="10,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
                     <TextBlock
                         Grid.Column="0"
@@ -142,6 +143,21 @@
                             Foreground="White"
                             ToolTip="关闭放大镜" />
                     </StackPanel>
+
+                    <Button
+                        Grid.Column="5"
+                        Width="32"
+                        Height="28"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="刷新放大镜截图"
+                        Background="#FF93C5FD"
+                        BorderBrush="#FFF9FAFB"
+                        BorderThickness="1"
+                        Click="BtnRefresh_Click"
+                        Content="↻"
+                        Foreground="#FF0F172A"
+                        ToolTip="刷新放大镜截图" />
                 </Grid>
             </Border>
         </Grid>

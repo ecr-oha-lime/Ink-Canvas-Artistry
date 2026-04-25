@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
 using WinForms = System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -39,7 +38,6 @@ namespace Ink_Canvas.Windows
         private bool _useLegacySnapshotMode;
         private Bitmap _legacyScreenBitmap;
         private Rect _virtualScreenBounds;
-        private Window _legacyOverlayWindow;
         private IntPtr _magnifierWindowHandle = IntPtr.Zero;
 
         public event EventHandler RequestClose;
@@ -143,7 +141,6 @@ namespace Ink_Canvas.Windows
             SourceInitialized += ScreenMagnifierWindow_SourceInitialized;
             Loaded += ScreenMagnifierWindow_Loaded;
             Activated += ScreenMagnifierWindow_Activated;
-            Deactivated += ScreenMagnifierWindow_Deactivated;
             Closing += ScreenMagnifierWindow_Closing;
             Closed += ScreenMagnifierWindow_Closed;
         }
@@ -193,10 +190,6 @@ namespace Ink_Canvas.Windows
             }
 
             RefreshZoomLabel();
-            if (_useLegacySnapshotMode)
-            {
-                ShowLegacyOverlayWindow();
-            }
             PlaceWindowBelowMainWindow();
             _captureTimer.Start();
         }
@@ -204,16 +197,6 @@ namespace Ink_Canvas.Windows
         private void ScreenMagnifierWindow_Activated(object sender, EventArgs e)
         {
             PlaceWindowBelowMainWindow();
-        }
-
-        private void ScreenMagnifierWindow_Deactivated(object sender, EventArgs e)
-        {
-            if (!_useLegacySnapshotMode || !IsVisible) return;
-
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (IsVisible && !IsActive) Activate();
-            }), DispatcherPriority.Background);
         }
 
         private void ScreenMagnifierWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -225,8 +208,6 @@ namespace Ink_Canvas.Windows
         private void ScreenMagnifierWindow_Closed(object sender, EventArgs e)
         {
             _captureTimer.Stop();
-
-            CloseLegacyOverlayWindow();
             _legacyScreenBitmap?.Dispose();
             _legacyScreenBitmap = null;
             _magnifierWindowHandle = IntPtr.Zero;
@@ -243,82 +224,6 @@ namespace Ink_Canvas.Windows
             _legacyScreenBitmap = CaptureMagnifierSourceBitmap(screen.Bounds.Left, screen.Bounds.Top, screen.Bounds.Width, screen.Bounds.Height);
         }
 
-        private void ShowLegacyOverlayWindow()
-        {
-            if (_legacyScreenBitmap == null || _legacyOverlayWindow != null) return;
-
-            IntPtr hBitmap = _legacyScreenBitmap.GetHbitmap();
-            BitmapSource source;
-            try
-            {
-                source = Imaging.CreateBitmapSourceFromHBitmap(
-                    hBitmap,
-                    IntPtr.Zero,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions());
-                source.Freeze();
-            }
-            finally
-            {
-                DeleteObject(hBitmap);
-            }
-
-            var image = new System.Windows.Controls.Image
-            {
-                Source = source,
-                Stretch = Stretch.Fill
-            };
-
-            var text = new TextBlock
-            {
-                Text = "放大镜模式",
-                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(150, 255, 255, 255)),
-                FontSize = 42,
-                FontWeight = FontWeights.Bold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 24, 0, 0)
-            };
-
-            var grid = new Grid();
-            grid.Children.Add(image);
-            grid.Children.Add(text);
-
-            _legacyOverlayWindow = new Window
-            {
-                WindowStyle = WindowStyle.None,
-                ResizeMode = ResizeMode.NoResize,
-                ShowInTaskbar = false,
-                ShowActivated = false,
-                Topmost = false,
-                AllowsTransparency = false,
-                Content = grid,
-                Background = System.Windows.Media.Brushes.Black,
-                IsHitTestVisible = false
-            };
-
-            PresentationSource sourceVisual = PresentationSource.FromVisual(this);
-            if (sourceVisual?.CompositionTarget != null)
-            {
-                Rect dipBounds = Rect.Transform(_virtualScreenBounds, sourceVisual.CompositionTarget.TransformFromDevice);
-                _legacyOverlayWindow.Left = dipBounds.Left;
-                _legacyOverlayWindow.Top = dipBounds.Top;
-                _legacyOverlayWindow.Width = dipBounds.Width;
-                _legacyOverlayWindow.Height = dipBounds.Height;
-            }
-            else
-            {
-                _legacyOverlayWindow.Left = 0;
-                _legacyOverlayWindow.Top = 0;
-                _legacyOverlayWindow.Width = SystemParameters.PrimaryScreenWidth;
-                _legacyOverlayWindow.Height = SystemParameters.PrimaryScreenHeight;
-            }
-
-            _legacyOverlayWindow.Show();
-            EnsureWindowBorderless(new WindowInteropHelper(_legacyOverlayWindow).Handle);
-            Activate();
-        }
-
         private void PlaceWindowBelowMainWindow()
         {
             if (_magnifierWindowHandle == IntPtr.Zero || _mainWindowHandle == IntPtr.Zero) return;
@@ -330,13 +235,6 @@ namespace Ink_Canvas.Windows
                 0,
                 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOREDRAW);
-        }
-
-        private void CloseLegacyOverlayWindow()
-        {
-            if (_legacyOverlayWindow == null) return;
-            _legacyOverlayWindow.Close();
-            _legacyOverlayWindow = null;
         }
 
         private Bitmap CaptureMagnifierSourceBitmap(int srcX, int srcY, int srcW, int srcH)
@@ -489,6 +387,16 @@ namespace Ink_Canvas.Windows
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            if (_useLegacySnapshotMode)
+            {
+                PrepareLegacySnapshotMode();
+            }
+
+            RenderMagnifiedFrame();
         }
 
         private void ResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
