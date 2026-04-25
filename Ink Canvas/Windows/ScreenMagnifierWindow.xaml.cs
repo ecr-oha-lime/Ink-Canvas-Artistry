@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -43,6 +44,7 @@ namespace Ink_Canvas.Windows
         private Bitmap _legacyScreenBitmap;
         private Rect _virtualScreenBounds;
         private IntPtr _magnifierWindowHandle = IntPtr.Zero;
+        private bool _hasLoggedRenderFrameException;
 
         public event EventHandler RequestClose;
 
@@ -264,7 +266,13 @@ namespace Ink_Canvas.Windows
                 }
                 try
                 {
-                    _ = BitBlt(dstHdc, 0, 0, srcW, srcH, srcHdc, srcX, srcY, SRCCOPY);
+                    bool bitBltOk = BitBlt(dstHdc, 0, 0, srcW, srcH, srcHdc, srcX, srcY, SRCCOPY);
+#if DEBUG
+                    if (!bitBltOk)
+                    {
+                        Debug.WriteLine($"CaptureMagnifierSourceBitmap BitBlt failed. src=({srcX},{srcY},{srcW},{srcH})");
+                    }
+#endif
                 }
                 finally
                 {
@@ -329,51 +337,62 @@ namespace Ink_Canvas.Windows
         /// </summary>
         private void RenderMagnifiedFrame()
         {
-            if (!IsLoaded || ImageViewport == null || ZoomSlider == null || ActualWidth < 40 || ActualHeight < 60) return;
-
-            PresentationSource source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget == null) return;
-            Matrix toDevice = source.CompositionTarget.TransformToDevice;
-
-            double zoom = ZoomSlider.Value;
-            const double topResizeHandleDip = 10;
-            const double barHeightDip = 42;
-            double viewportHeightDip = ActualHeight - barHeightDip - topResizeHandleDip;
-            if (viewportHeightDip <= 1) return;
-
-            double captureWidthDip = ActualWidth / zoom;
-            double captureHeightDip = viewportHeightDip / zoom;
-            if (captureWidthDip < 1 || captureHeightDip < 1) return;
-
-            double centerXDip = Left + ActualWidth / 2;
-            double centerYDip = Top + topResizeHandleDip + viewportHeightDip / 2;
-
-            System.Windows.Point topLeftDev = toDevice.Transform(
-                new System.Windows.Point(centerXDip - captureWidthDip / 2, centerYDip - captureHeightDip / 2));
-            Vector sizeDev = toDevice.Transform(new Vector(captureWidthDip, captureHeightDip));
-
-            int srcX = (int)Math.Round(topLeftDev.X);
-            int srcY = (int)Math.Round(topLeftDev.Y);
-            int srcW = Math.Max(1, (int)Math.Round(sizeDev.X));
-            int srcH = Math.Max(1, (int)Math.Round(sizeDev.Y));
-
-            using (var bitmap = _useLegacySnapshotMode ? CaptureFromLegacySnapshot(srcX, srcY, srcW, srcH) : CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH))
+            try
             {
-                IntPtr hBitmap = bitmap.GetHbitmap();
-                try
+                if (!IsLoaded || ImageViewport == null || ZoomSlider == null || ActualWidth < 40 || ActualHeight < 60) return;
+
+                PresentationSource source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget == null) return;
+                Matrix toDevice = source.CompositionTarget.TransformToDevice;
+
+                double zoom = ZoomSlider.Value;
+                const double topResizeHandleDip = 10;
+                const double barHeightDip = 42;
+                double viewportHeightDip = ActualHeight - barHeightDip - topResizeHandleDip;
+                if (viewportHeightDip <= 1) return;
+
+                double captureWidthDip = ActualWidth / zoom;
+                double captureHeightDip = viewportHeightDip / zoom;
+                if (captureWidthDip < 1 || captureHeightDip < 1) return;
+
+                double centerXDip = Left + ActualWidth / 2;
+                double centerYDip = Top + topResizeHandleDip + viewportHeightDip / 2;
+
+                System.Windows.Point topLeftDev = toDevice.Transform(
+                    new System.Windows.Point(centerXDip - captureWidthDip / 2, centerYDip - captureHeightDip / 2));
+                Vector sizeDev = toDevice.Transform(new Vector(captureWidthDip, captureHeightDip));
+
+                int srcX = (int)Math.Round(topLeftDev.X);
+                int srcY = (int)Math.Round(topLeftDev.Y);
+                int srcW = Math.Max(1, (int)Math.Round(sizeDev.X));
+                int srcH = Math.Max(1, (int)Math.Round(sizeDev.Y));
+
+                using (var bitmap = _useLegacySnapshotMode ? CaptureFromLegacySnapshot(srcX, srcY, srcW, srcH) : CaptureMagnifierSourceBitmap(srcX, srcY, srcW, srcH))
                 {
-                    BitmapSource bitmapSource = Imaging.CreateBitmapSourceFromHBitmap(
-                        hBitmap,
-                        IntPtr.Zero,
-                        Int32Rect.Empty,
-                        BitmapSizeOptions.FromEmptyOptions());
-                    bitmapSource.Freeze();
-                    ImageViewport.Source = bitmapSource;
+                    IntPtr hBitmap = bitmap.GetHbitmap();
+                    try
+                    {
+                        BitmapSource bitmapSource = Imaging.CreateBitmapSourceFromHBitmap(
+                            hBitmap,
+                            IntPtr.Zero,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions());
+                        bitmapSource.Freeze();
+                        ImageViewport.Source = bitmapSource;
+                    }
+                    finally
+                    {
+                        DeleteObject(hBitmap);
+                    }
                 }
-                finally
-                {
-                    DeleteObject(hBitmap);
-                }
+
+                _hasLoggedRenderFrameException = false;
+            }
+            catch (Exception ex)
+            {
+                if (_hasLoggedRenderFrameException) return;
+                _hasLoggedRenderFrameException = true;
+                Debug.WriteLine($"RenderMagnifiedFrame failed: {ex}");
             }
         }
 
