@@ -49,9 +49,12 @@ namespace Ink_Canvas
         /// </summary>
         private bool IsInkStraightenAvailable()
         {
+            bool isInkInputMode = inkCanvas.EditingMode == InkCanvasEditingMode.Ink;
+            bool isMultiTouchInkInputMode = isInMultiTouchMode && inkCanvas.EditingMode == InkCanvasEditingMode.None;
+
             return Settings?.InkStraighten != null
                    && Settings.InkStraighten.IsInkStraightenEnabled
-                   && inkCanvas.EditingMode == InkCanvasEditingMode.Ink
+                   && (isInkInputMode || isMultiTouchInkInputMode)
                    && drawingShapeMode == 0
                    && !forceEraser;
         }
