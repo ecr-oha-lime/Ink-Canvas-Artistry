@@ -7035,7 +7035,9 @@
                             <Grid Width="0">
                                 <Border
                                     Name="BorderTools"
-                                    Margin="-120,-180,-40,40"
+                                    Margin="-120,-220,0,0"
+                                    MinHeight="210"
+                                    VerticalAlignment="Top"
                                     Background="{DynamicResource FloatBarBackground}"
                                     BorderBrush="{DynamicResource FloatBarBorderBrush}"
                                     BorderThickness="1"
