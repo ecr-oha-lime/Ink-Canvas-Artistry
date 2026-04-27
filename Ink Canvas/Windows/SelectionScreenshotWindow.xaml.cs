@@ -28,6 +28,7 @@ namespace Ink_Canvas.Windows
         private readonly Bitmap _fullScreenshot;
         private readonly Rectangle _virtualScreenBounds;
         private readonly Func<bool, Bitmap> _screenshotProvider;
+        private readonly Action<bool> _hideInkPreviewChanged;
         private SelectionScreenshotMode _mode = SelectionScreenshotMode.Rectangle;
         private bool _isSelecting;
         private Point _startPoint;
@@ -36,18 +37,20 @@ namespace Ink_Canvas.Windows
         public SelectionScreenshotAction ActionResult { get; private set; } = SelectionScreenshotAction.Cancel;
         public Bitmap CapturedBitmap { get; private set; }
 
-        public SelectionScreenshotWindow(Bitmap screenshot, Rectangle virtualScreenBounds, Func<bool, Bitmap> screenshotProvider)
+        public SelectionScreenshotWindow(Bitmap screenshot, Rectangle virtualScreenBounds, Func<bool, Bitmap> screenshotProvider, Action<bool> hideInkPreviewChanged)
         {
             InitializeComponent();
             _fullScreenshot = screenshot;
             _virtualScreenBounds = virtualScreenBounds;
             _screenshotProvider = screenshotProvider;
+            _hideInkPreviewChanged = hideInkPreviewChanged;
             UpdateModeVisualState();
         }
 
 
         protected override void OnClosed(EventArgs e)
         {
+            _hideInkPreviewChanged?.Invoke(false);
             _fullScreenshot?.Dispose();
             base.OnClosed(e);
         }
@@ -148,11 +151,13 @@ namespace Ink_Canvas.Windows
         private void ToggleHideInk_Checked(object sender, RoutedEventArgs e)
         {
             HintTextBlock.Text = "已开启：截图时临时隐藏墨迹";
+            _hideInkPreviewChanged?.Invoke(true);
         }
 
         private void ToggleHideInk_Unchecked(object sender, RoutedEventArgs e)
         {
             UpdateHintText();
+            _hideInkPreviewChanged?.Invoke(false);
         }
 
         private void BtnSaveDesktop_Click(object sender, RoutedEventArgs e)
@@ -378,6 +383,7 @@ namespace Ink_Canvas.Windows
         private void UpdateModeVisualState()
         {
             UpdateHintText();
+            _hideInkPreviewChanged?.Invoke(false);
             BtnRectMode.Opacity = _mode == SelectionScreenshotMode.Rectangle ? 1 : 0.75;
             BtnFreeMode.Opacity = _mode == SelectionScreenshotMode.Freehand ? 1 : 0.75;
 

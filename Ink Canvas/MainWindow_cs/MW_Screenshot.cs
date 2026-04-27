@@ -9,6 +9,41 @@ namespace Ink_Canvas
 {
     public partial class MainWindow : Window
     {
+        bool isSelectionHideInkPreviewActive = false;
+        double selectionHideInkPreviewOpacityBackup = 1;
+        bool selectionHideInkPreviewHitTestBackup = true;
+        Visibility selectionHideInkPreviewSelectionCoverVisibilityBackup = Visibility.Visible;
+
+        /// <summary>
+        /// 控制“隐藏墨迹”实时预览状态。
+        /// </summary>
+        private void SetSelectionHideInkPreview(bool isActive)
+        {
+            if (isActive)
+            {
+                if (isSelectionHideInkPreviewActive) return;
+                isSelectionHideInkPreviewActive = true;
+                selectionHideInkPreviewOpacityBackup = inkCanvas.Opacity;
+                selectionHideInkPreviewHitTestBackup = inkCanvas.IsHitTestVisible;
+                selectionHideInkPreviewSelectionCoverVisibilityBackup = GridInkCanvasSelectionCover.Visibility;
+
+                inkCanvas.Opacity = 0;
+                inkCanvas.IsHitTestVisible = false;
+                GridInkCanvasSelectionCover.Visibility = Visibility.Collapsed;
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+            }
+            else
+            {
+                if (!isSelectionHideInkPreviewActive) return;
+                isSelectionHideInkPreviewActive = false;
+
+                inkCanvas.Opacity = selectionHideInkPreviewOpacityBackup;
+                inkCanvas.IsHitTestVisible = selectionHideInkPreviewHitTestBackup;
+                GridInkCanvasSelectionCover.Visibility = selectionHideInkPreviewSelectionCoverVisibilityBackup;
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+            }
+        }
+
         /// <summary>
         /// 保存全屏截图到自动保存目录。
         /// </summary>
@@ -102,6 +137,12 @@ namespace Ink_Canvas
         {
             if (!hideInk)
             {
+                return GetScreenshotBitmap();
+            }
+
+            if (isSelectionHideInkPreviewActive)
+            {
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
                 return GetScreenshotBitmap();
             }
 
