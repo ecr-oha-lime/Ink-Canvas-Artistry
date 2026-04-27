@@ -143,6 +143,7 @@ namespace Ink_Canvas
                         && (now - session.LowSpeedStartTimestamp).TotalMilliseconds >= ClampInkStraightenHoldDurationMs())
                     {
                         session.IsTriggered = true;
+                        HideMultiTouchRawStrokePreview(pointerId);
                         if (!session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.Ink)
                         {
                             inkCanvas.EditingMode = InkCanvasEditingMode.None;
@@ -167,6 +168,23 @@ namespace Ink_Canvas
 
             session.LastPoint = currentPoint;
             session.LastTimestamp = now;
+        }
+
+        /// <summary>
+        /// 在多指书写下触发拉直后，立即隐藏原始自由曲线预览。
+        /// </summary>
+        private void HideMultiTouchRawStrokePreview(int pointerId)
+        {
+            if (!isInMultiTouchMode)
+            {
+                return;
+            }
+
+            var visualCanvas = GetVisualCanvas(pointerId);
+            if (visualCanvas != null && inkCanvas.Children.Contains(visualCanvas))
+            {
+                inkCanvas.Children.Remove(visualCanvas);
+            }
         }
 
         /// <summary>
