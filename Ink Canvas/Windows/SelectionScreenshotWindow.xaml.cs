@@ -232,17 +232,20 @@ namespace Ink_Canvas.Windows
             {
                 if (hideInk)
                 {
-                    // 重新截图前先隐藏选区窗口，避免半透明遮罩被截入结果
-                    Visibility oldVisibility = Visibility;
+                    // 重新截图前先临时隐藏选区窗口视觉层，避免半透明遮罩被截入结果
+                    double oldOpacity = Opacity;
+                    bool oldIsHitTestVisible = IsHitTestVisible;
                     try
                     {
-                        Visibility = Visibility.Hidden;
+                        Opacity = 0;
+                        IsHitTestVisible = false;
                         Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
                         screenshot = _screenshotProvider(true);
                     }
                     finally
                     {
-                        Visibility = oldVisibility;
+                        Opacity = oldOpacity;
+                        IsHitTestVisible = oldIsHitTestVisible;
                         Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
                     }
                 }
