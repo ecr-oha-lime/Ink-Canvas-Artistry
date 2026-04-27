@@ -37,6 +37,9 @@ namespace Ink_Canvas.Windows
         public SelectionScreenshotAction ActionResult { get; private set; } = SelectionScreenshotAction.Cancel;
         public Bitmap CapturedBitmap { get; private set; }
 
+        /// <summary>
+        /// 初始化选区截图窗口并注入截图与预览控制回调。
+        /// </summary>
         public SelectionScreenshotWindow(Bitmap screenshot, Rectangle virtualScreenBounds, Func<bool, Bitmap> screenshotProvider, Action<bool> hideInkPreviewChanged)
         {
             InitializeComponent();
@@ -48,6 +51,9 @@ namespace Ink_Canvas.Windows
         }
 
 
+        /// <summary>
+        /// 窗口关闭时兜底恢复“隐藏墨迹”预览状态并释放资源。
+        /// </summary>
         protected override void OnClosed(EventArgs e)
         {
             _hideInkPreviewChanged?.Invoke(false);
@@ -229,6 +235,9 @@ namespace Ink_Canvas.Windows
             SelectionPath.Data = geometry;
         }
 
+        /// <summary>
+        /// 根据当前模式与开关生成最终截图位图。
+        /// </summary>
         private Bitmap BuildCaptureBitmap()
         {
             bool hideInk = ToggleHideInk.IsChecked == true;
@@ -269,6 +278,9 @@ namespace Ink_Canvas.Windows
             }
         }
 
+        /// <summary>
+        /// 从截图源中按矩形选区裁剪位图。
+        /// </summary>
         private Bitmap CaptureRectangle(Bitmap screenshot)
         {
             if (SelectionRect.Width < 5 || SelectionRect.Height < 5) return null;
@@ -289,6 +301,9 @@ namespace Ink_Canvas.Windows
             return result;
         }
 
+        /// <summary>
+        /// 从截图源中按自由图形选区裁剪位图。
+        /// </summary>
         private Bitmap CaptureFreehand(Bitmap screenshot)
         {
             if (_freehandPoints.Count < 3 || SelectionPath.Data == null) return null;
@@ -340,6 +355,9 @@ namespace Ink_Canvas.Windows
             return result;
         }
 
+        /// <summary>
+        /// 将窗口内坐标映射到虚拟屏幕截图位图坐标。
+        /// </summary>
         private Point MapUiPointToScreenshot(Point uiPoint)
         {
             // 先将窗口内坐标转换为屏幕坐标，再映射到虚拟屏幕位图坐标
@@ -383,7 +401,7 @@ namespace Ink_Canvas.Windows
         private void UpdateModeVisualState()
         {
             UpdateHintText();
-            _hideInkPreviewChanged?.Invoke(false);
+            _hideInkPreviewChanged?.Invoke(ToggleHideInk.IsChecked == true);
             BtnRectMode.Opacity = _mode == SelectionScreenshotMode.Rectangle ? 1 : 0.75;
             BtnFreeMode.Opacity = _mode == SelectionScreenshotMode.Freehand ? 1 : 0.75;
 
