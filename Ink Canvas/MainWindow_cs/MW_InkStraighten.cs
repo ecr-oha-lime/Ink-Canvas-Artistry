@@ -388,6 +388,56 @@ namespace Ink_Canvas
             return TryApplyActiveInkStraighten(rawStroke);
         }
 
+        /// <summary>
+        /// 针对多指书写延迟提交场景：在触点抬起时直接提交拉直笔迹，避免原始曲线闪现。
+        /// </summary>
+        private bool TryCommitDeferredInkStraightenByPointer(int pointerId, Stroke rawStroke)
+        {
+            if (!_inkStraightenSessions.TryGetValue(pointerId, out var session)
+                || !session.IsTriggered
+                || session.IsCommitted)
+            {
+                return false;
+            }
+
+            if (session.PreviewLine != null && Main_Grid.Children.Contains(session.PreviewLine))
+            {
+                Main_Grid.Children.Remove(session.PreviewLine);
+                session.PreviewLine = null;
+            }
+
+            float startPressure = rawStroke?.StylusPoints?.Count > 0 ? rawStroke.StylusPoints.First().PressureFactor : 0.5f;
+            float endPressure = rawStroke?.StylusPoints?.Count > 0 ? rawStroke.StylusPoints.Last().PressureFactor : 0.5f;
+            var straightStroke = new Stroke(new StylusPointCollection
+            {
+                new StylusPoint(session.StartPoint.X, session.StartPoint.Y, startPressure),
+                new StylusPoint(session.LatestPoint.X, session.LatestPoint.Y, endPressure)
+            })
+            {
+                DrawingAttributes = rawStroke?.DrawingAttributes?.Clone() ?? inkCanvas.DefaultDrawingAttributes.Clone()
+            };
+
+            SetNewBackupOfStroke();
+            var previousCommitType = _currentCommitType;
+            try
+            {
+                _currentCommitType = CommitReason.ShapeRecognition;
+                inkCanvas.Strokes.Add(straightStroke);
+            }
+            finally
+            {
+                _currentCommitType = previousCommitType;
+            }
+
+            session.IsCommitted = true;
+            if (session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.None)
+            {
+                inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
+            }
+            _inkStraightenSessions.Remove(pointerId);
+            return true;
+        }
+
         private void Window_PreviewMouseUpForStraighten(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
