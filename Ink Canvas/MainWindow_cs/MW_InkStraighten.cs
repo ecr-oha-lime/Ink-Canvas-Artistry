@@ -35,6 +35,7 @@ namespace Ink_Canvas
         /// 当前活动的墨迹拉直会话集合（按指针 id 管理）。
         /// </summary>
         private readonly Dictionary<int, InkStraightenSession> _inkStraightenSessions = new Dictionary<int, InkStraightenSession>();
+        private static readonly TimeSpan InkStraightenSessionStaleTimeout = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// 判断输入事件是否由触控笔提升而来。
@@ -78,6 +79,43 @@ namespace Ink_Canvas
         }
 
         /// <summary>
+        /// 清理长时间未更新的拉直会话，避免输入链路异常中断时会话残留。
+        /// </summary>
+        private void CleanupStaleInkStraightenSessions()
+        {
+            if (_inkStraightenSessions.Count == 0)
+            {
+                return;
+            }
+
+            DateTime now = DateTime.UtcNow;
+            var stalePointerIds = _inkStraightenSessions
+                .Where(item => (now - item.Value.LastTimestamp) > InkStraightenSessionStaleTimeout)
+                .Select(item => item.Key)
+                .ToList();
+
+            foreach (var pointerId in stalePointerIds)
+            {
+                if (!_inkStraightenSessions.TryGetValue(pointerId, out var session))
+                {
+                    continue;
+                }
+
+                if (session.PreviewLine != null && Main_Grid.Children.Contains(session.PreviewLine))
+                {
+                    Main_Grid.Children.Remove(session.PreviewLine);
+                }
+
+                if (session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.None)
+                {
+                    inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
+                }
+
+                _inkStraightenSessions.Remove(pointerId);
+            }
+        }
+
+        /// <summary>
         /// 启动墨迹拉直会话。
         /// </summary>
         private void StartInkStraightenSession(int pointerId, Point startPoint)
@@ -87,6 +125,7 @@ namespace Ink_Canvas
                 return;
             }
 
+            CleanupStaleInkStraightenSessions();
             var now = DateTime.UtcNow;
             _inkStraightenSessions[pointerId] = new InkStraightenSession
             {
@@ -429,7 +468,7 @@ namespace Ink_Canvas
             var previousCommitType = _currentCommitType;
             try
             {
-                _currentCommitType = CommitReason.ShapeRecognition;
+                _currentCommitType = CommitReason.UserInput;
                 inkCanvas.Strokes.Add(straightStroke);
             }
             finally
