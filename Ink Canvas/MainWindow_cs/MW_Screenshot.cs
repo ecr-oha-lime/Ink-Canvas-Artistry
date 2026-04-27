@@ -3,36 +3,74 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace Ink_Canvas
 {
     public partial class MainWindow : Window
     {
+        bool isSelectionHideInkPreviewActive = false;
+        double selectionHideInkPreviewOpacityBackup = 1;
+        bool selectionHideInkPreviewHitTestBackup = true;
+        Visibility selectionHideInkPreviewSelectionCoverVisibilityBackup = Visibility.Visible;
+
+        /// <summary>
+        /// 控制“隐藏墨迹”实时预览状态。
+        /// </summary>
+        private void SetSelectionHideInkPreview(bool isActive)
+        {
+            if (isActive)
+            {
+                if (isSelectionHideInkPreviewActive) return;
+                isSelectionHideInkPreviewActive = true;
+                selectionHideInkPreviewOpacityBackup = inkCanvas.Opacity;
+                selectionHideInkPreviewHitTestBackup = inkCanvas.IsHitTestVisible;
+                selectionHideInkPreviewSelectionCoverVisibilityBackup = GridInkCanvasSelectionCover.Visibility;
+
+                inkCanvas.Opacity = 0;
+                inkCanvas.IsHitTestVisible = false;
+                GridInkCanvasSelectionCover.Visibility = Visibility.Collapsed;
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+            }
+            else
+            {
+                if (!isSelectionHideInkPreviewActive) return;
+                isSelectionHideInkPreviewActive = false;
+
+                inkCanvas.Opacity = selectionHideInkPreviewOpacityBackup;
+                inkCanvas.IsHitTestVisible = selectionHideInkPreviewHitTestBackup;
+                GridInkCanvasSelectionCover.Visibility = selectionHideInkPreviewSelectionCoverVisibilityBackup;
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+            }
+        }
+
         /// <summary>
         /// 保存全屏截图到自动保存目录。
         /// </summary>
         private void SaveScreenshot(bool isHideNotification, string fileName = null)
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - Screenshots";
-            if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
-            if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+            using (var bitmap = GetScreenshotBitmap())
             {
-                savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
-            }
-            savePath += @"\" + fileName + ".png";
-            if (!Directory.Exists(Path.GetDirectoryName(savePath)))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(savePath));
-            }
-            bitmap.Save(savePath, ImageFormat.Png);
-            if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
-            {
-                SaveInkCanvasFile(false, false);
-            }
-            if (!isHideNotification)
-            {
-                ShowNotificationAsync("截图成功保存至 " + savePath);
+                string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - Screenshots";
+                if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
+                if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+                {
+                    savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
+                }
+                savePath += @"\" + fileName + ".png";
+                if (!Directory.Exists(Path.GetDirectoryName(savePath)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+                }
+                bitmap.Save(savePath, ImageFormat.Png);
+                if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+                {
+                    SaveInkCanvasFile(false, false);
+                }
+                if (!isHideNotification)
+                {
+                    ShowNotificationAsync("截图成功保存至 " + savePath);
+                }
             }
         }
 
@@ -41,11 +79,27 @@ namespace Ink_Canvas
         /// </summary>
         private void SaveScreenShotToDesktop()
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            bitmap.Save(savePath + @"\" + DateTime.Now.ToString("u").Replace(':', '-') + ".png", ImageFormat.Png);
-            ShowNotificationAsync("截图成功保存至【桌面" + @"\" + DateTime.Now.ToString("u").Replace(':', '-') + ".png】");
+            using (var bitmap = GetScreenshotBitmap())
+            {
+                SaveBitmapToDesktop(bitmap, true);
+            }
             if (Settings.Automation.IsAutoSaveStrokesAtScreenshot) SaveInkCanvasFile(false, false);
+        }
+
+        /// <summary>
+        /// 将指定位图保存到桌面。
+        /// </summary>
+        private string SaveBitmapToDesktop(Bitmap bitmap, bool showNotification)
+        {
+            string savePath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string fileName = DateTime.Now.ToString("u").Replace(':', '-') + ".png";
+            string fullPath = Path.Combine(savePath, fileName);
+            bitmap.Save(fullPath, ImageFormat.Png);
+            if (showNotification)
+            {
+                ShowNotificationAsync("截图成功保存至【桌面" + @"\" + fileName + "】");
+            }
+            return fullPath;
         }
 
         /// <summary>
@@ -53,22 +107,62 @@ namespace Ink_Canvas
         /// </summary>
         private void SavePPTScreenshot(string fileName)
         {
-            var bitmap = GetScreenshotBitmap();
-            string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - PPT Screenshots";
-            if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+            using (var bitmap = GetScreenshotBitmap())
             {
-                savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
+                string savePath = Settings.Automation.AutoSavedStrokesLocation + @"\Auto Saved - PPT Screenshots";
+                if (Settings.Automation.IsSaveScreenshotsInDateFolders)
+                {
+                    savePath += @"\" + DateTime.Now.ToString("yyyy-MM-dd");
+                }
+                if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
+                savePath += @"\" + fileName + ".png";
+                if (!Directory.Exists(Path.GetDirectoryName(savePath)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+                }
+                bitmap.Save(savePath, ImageFormat.Png);
+                if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+                {
+                    SaveInkCanvasFile(false, false);
+                }
             }
-            if (fileName == null) fileName = DateTime.Now.ToString("u").Replace(":", "-");
-            savePath += @"\" + fileName + ".png";
-            if (!Directory.Exists(Path.GetDirectoryName(savePath)))
+        }
+
+
+
+        /// <summary>
+        /// 获取用于选区截图的位图，可按需临时隐藏墨迹。
+        /// </summary>
+        private Bitmap GetScreenshotBitmapForSelection(bool hideInk)
+        {
+            if (!hideInk)
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+                return GetScreenshotBitmap();
             }
-            bitmap.Save(savePath, ImageFormat.Png);
-            if (Settings.Automation.IsAutoSaveStrokesAtScreenshot)
+
+            if (isSelectionHideInkPreviewActive)
             {
-                SaveInkCanvasFile(false, false);
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                return GetScreenshotBitmap();
+            }
+
+            double inkCanvasOpacity = inkCanvas.Opacity;
+            bool inkCanvasIsHitTestVisible = inkCanvas.IsHitTestVisible;
+            Visibility selectionCoverVisibility = GridInkCanvasSelectionCover.Visibility;
+            try
+            {
+                // 临时隐藏墨迹，不改动笔迹数据，避免影响撤销/重做历史
+                inkCanvas.Opacity = 0;
+                inkCanvas.IsHitTestVisible = false;
+                GridInkCanvasSelectionCover.Visibility = Visibility.Collapsed;
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                return GetScreenshotBitmap();
+            }
+            finally
+            {
+                inkCanvas.Opacity = inkCanvasOpacity;
+                inkCanvas.IsHitTestVisible = inkCanvasIsHitTestVisible;
+                GridInkCanvasSelectionCover.Visibility = selectionCoverVisibility;
             }
         }
 
