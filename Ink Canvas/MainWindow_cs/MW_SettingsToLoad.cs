@@ -631,6 +631,7 @@ namespace Ink_Canvas
                 {
                     ToggleSwitchAutoFoldInPPTSlideShow.IsOn = false;
                 }
+                AutoFoldByForegroundExeNamesTextBox.Text = Settings.Automation.AutoFoldByForegroundExeNames ?? "";
                 if (Settings.Automation.IsAutoKillEasiNote || Settings.Automation.IsAutoKillPptService)
                 {
                     timerKillProcess.Start();

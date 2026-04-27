@@ -226,6 +226,10 @@ namespace Ink_Canvas
         {
             BtnBoardGesture.Visibility = Settings.Appearance.IsShowBoardGestureButton ? Visibility.Visible : Visibility.Collapsed;
             BtnBoardCanvas.Visibility = Settings.Appearance.IsShowBoardCanvasButton ? Visibility.Visible : Visibility.Collapsed;
+            BoardGestureCanvasContainer.Visibility =
+                BtnBoardGesture.Visibility == Visibility.Visible || BtnBoardCanvas.Visibility == Visibility.Visible
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
             BtnBoardSelect.Visibility = Settings.Appearance.IsShowBoardSelectButton ? Visibility.Visible : Visibility.Collapsed;
             BtnBoardAreaEraser.Visibility = Settings.Appearance.IsShowBoardAreaEraserButton ? Visibility.Visible : Visibility.Collapsed;
             BtnBoardStrokeEraser.Visibility = Settings.Appearance.IsShowBoardStrokeEraserButton ? Visibility.Visible : Visibility.Collapsed;
@@ -233,20 +237,23 @@ namespace Ink_Canvas
             BtnBoardInsertImage.Visibility = Settings.Appearance.IsShowBoardInsertImageButton ? Visibility.Visible : Visibility.Collapsed;
             BtnBoardUndo.Visibility = Settings.Appearance.IsShowBoardUndoButton ? Visibility.Visible : Visibility.Collapsed;
             BtnBoardRedo.Visibility = Settings.Appearance.IsShowBoardRedoButton ? Visibility.Visible : Visibility.Collapsed;
+            BoardMainButtonsContainer.Visibility = Visibility.Visible;
 
             BoardGestureCanvasSpacing.Visibility =
-                BtnBoardGesture.Visibility == Visibility.Visible || BtnBoardCanvas.Visibility == Visibility.Visible
+                BoardGestureCanvasContainer.Visibility == Visibility.Visible
                     ? Visibility.Visible
                     : Visibility.Collapsed;
 
-            UpdateBoardButtonGroupStyles(
+            UpdateBoardButtonGroupSeparators(
+                true,
                 (BtnBoardGesture, BoardGestureBorder),
                 (BtnBoardCanvas, BoardCanvasBorder)
             );
 
-            UpdateBoardButtonGroupStyles(
+            UpdateBoardButtonGroupSeparators(
+                true,
                 (BtnBoardSelect, BoardSelect),
-                (BoardPen, BoardPen),
+                (BtnBoardPen, BoardPen),
                 (BtnBoardAreaEraser, BoardEraser),
                 (BtnBoardStrokeEraser, BoardEraserByStrokes),
                 (BtnBoardShape, BoardGeometry),
@@ -256,7 +263,19 @@ namespace Ink_Canvas
             );
         }
 
-        private void UpdateBoardButtonGroupStyles(params (UIElement Element, Border Border)[] buttons)
+        /// <summary>
+        /// Updates group-internal separator lines and optional end-cap corner radii
+        /// for a horizontally arranged set of board toolbar buttons.
+        /// </summary>
+        /// <param name="applyCornerRadius">
+        /// True to round only the first visible button's left corners and the last
+        /// visible button's right corners; false to force all corners to 0.
+        /// </param>
+        /// <param name="buttons">
+        /// Tuple list mapping each button element to its visual border that receives
+        /// separator thickness and corner radius updates.
+        /// </param>
+        private void UpdateBoardButtonGroupSeparators(bool applyCornerRadius, params (UIElement Element, Border Border)[] buttons)
         {
             int firstVisible = -1;
             int lastVisible = -1;
@@ -269,14 +288,13 @@ namespace Ink_Canvas
 
             for (int i = 0; i < buttons.Length; i++)
             {
-                bool isVisible = buttons[i].Element.Visibility == Visibility.Visible;
-                if (!isVisible) continue;
-
+                if (buttons[i].Element.Visibility != Visibility.Visible) continue;
                 bool isFirst = i == firstVisible;
                 bool isLast = i == lastVisible;
-
-                buttons[i].Border.BorderThickness = new Thickness(isFirst ? 1 : 0, 1, isLast ? 1 : 0.25, 1);
-                buttons[i].Border.CornerRadius = new CornerRadius(isFirst ? 5 : 0, isFirst ? 5 : 0, isLast ? 5 : 0, isLast ? 5 : 0);
+                buttons[i].Border.BorderThickness = new Thickness(0, 0, isLast ? 0 : 1, 0);
+                buttons[i].Border.CornerRadius = applyCornerRadius
+                    ? new CornerRadius(isFirst ? 5 : 0, isLast ? 5 : 0, isLast ? 5 : 0, isFirst ? 5 : 0)
+                    : new CornerRadius(0);
             }
         }
 
@@ -445,6 +463,7 @@ namespace Ink_Canvas
 
         private void StartOrStoptimerCheckAutoFold()
         {
+            previousForegroundProcessName = "";
             if (Settings.Automation.IsEnableAutoFold)
             {
                 timerCheckAutoFold.Start();
@@ -538,6 +557,14 @@ namespace Ink_Canvas
         {
             if (!isLoaded) return;
             Settings.Automation.IsAutoFoldInPPTSlideShow = ToggleSwitchAutoFoldInPPTSlideShow.IsOn;
+            SaveSettingsToFile();
+            StartOrStoptimerCheckAutoFold();
+        }
+
+        private void AutoFoldByForegroundExeNamesTextBox_TextChanged(object sender, RoutedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Settings.Automation.AutoFoldByForegroundExeNames = AutoFoldByForegroundExeNamesTextBox.Text?.Trim() ?? "";
             SaveSettingsToFile();
             StartOrStoptimerCheckAutoFold();
         }
@@ -853,6 +880,7 @@ namespace Ink_Canvas
             Settings.Automation.IsAutoFoldInOldZyBoard = false;
             Settings.Automation.IsAutoFoldInMSWhiteboard = false;
             Settings.Automation.IsAutoFoldInPPTSlideShow = false;
+            Settings.Automation.AutoFoldByForegroundExeNames = "";
             Settings.Automation.IsAutoKillPptService = false;
             Settings.Automation.IsAutoKillEasiNote = false;
             Settings.Automation.IsSaveScreenshotsInDateFolders = false;

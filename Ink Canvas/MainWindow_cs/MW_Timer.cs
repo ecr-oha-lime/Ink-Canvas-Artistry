@@ -86,6 +86,7 @@ namespace Ink_Canvas
 
         bool foldFloatingBarByUser = false, // 保持收纳操作不受自动收纳的控制
             unfoldFloatingBarByUser = false; // 允许用户在希沃软件内进行展开操作
+        volatile string previousForegroundProcessName = "";
 
         /// <summary>
         /// 自动收纳/展开浮动栏逻辑轮询。
@@ -97,7 +98,15 @@ namespace Ink_Canvas
             {
                 string windowProcessName = ForegroundWindowInfo.ProcessName();
                 string windowTitle = ForegroundWindowInfo.WindowTitle();
+                bool isForegroundProcessChanged = !string.Equals(previousForegroundProcessName, windowProcessName, StringComparison.OrdinalIgnoreCase);
+                previousForegroundProcessName = windowProcessName;
+                if (isForegroundProcessChanged)
+                {
+                    unfoldFloatingBarByUser = false;
+                }
                 //LogHelper.WriteLogToFile("windowTitle | " + windowTitle + " | windowProcessName | " + windowProcessName);
+
+                bool isCurrentProcessMatchedByCustomForegroundExe = IsProcessMatchedByAutoFoldList(windowProcessName);
 
                 if (Settings.Automation.IsAutoFoldInEasiNote && windowProcessName == "EasiNote" // 希沃白板
                     && (!(windowTitle.Length == 0 && ForegroundWindowInfo.WindowRect().Height < 500) || !Settings.Automation.IsAutoFoldInEasiNoteIgnoreDesktopAnno)
@@ -110,7 +119,8 @@ namespace Ink_Canvas
                     || Settings.Automation.IsAutoFoldInMSWhiteboard && (windowProcessName == "MicrosoftWhiteboard" || windowProcessName == "msedgewebview2") // 微软白板
                     || Settings.Automation.IsAutoFoldInOldZyBoard && // 中原旧白板
                     (WinTabWindowsChecker.IsWindowExisted("WhiteBoard - DrawingWindow")
-                    || WinTabWindowsChecker.IsWindowExisted("InstantAnnotationWindow")))
+                    || WinTabWindowsChecker.IsWindowExisted("InstantAnnotationWindow"))
+                    || isCurrentProcessMatchedByCustomForegroundExe)
                 {
                     if (!unfoldFloatingBarByUser && !isFloatingBarFolded)
                     {
@@ -134,6 +144,39 @@ namespace Ink_Canvas
                 }
             }
             catch { }
+        }
+
+        private bool IsProcessMatchedByAutoFoldList(string windowProcessName)
+        {
+            if (string.IsNullOrWhiteSpace(windowProcessName)) return false;
+            string autoFoldByForegroundExeNames = Settings.Automation.AutoFoldByForegroundExeNames;
+            if (string.IsNullOrWhiteSpace(autoFoldByForegroundExeNames)) return false;
+
+            string normalizedProcessName = NormalizeProcessName(windowProcessName);
+            string[] processNameRules = autoFoldByForegroundExeNames.Split(',');
+
+            for (int i = 0; i < processNameRules.Length; i++)
+            {
+                string rule = NormalizeProcessName(processNameRules[i]);
+                if (rule.Length == 0) continue;
+                if (string.Equals(normalizedProcessName, rule, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private string NormalizeProcessName(string processName)
+        {
+            if (string.IsNullOrWhiteSpace(processName)) return "";
+            processName = processName.Trim();
+            if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                processName = processName.Substring(0, processName.Length - 4);
+            }
+            return processName;
         }
 
         /// <summary>

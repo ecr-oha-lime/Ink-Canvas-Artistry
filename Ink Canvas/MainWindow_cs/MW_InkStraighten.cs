@@ -35,6 +35,7 @@ namespace Ink_Canvas
         /// 当前活动的墨迹拉直会话集合（按指针 id 管理）。
         /// </summary>
         private readonly Dictionary<int, InkStraightenSession> _inkStraightenSessions = new Dictionary<int, InkStraightenSession>();
+        private static readonly TimeSpan InkStraightenSessionStaleTimeout = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// 判断输入事件是否由触控笔提升而来。
@@ -49,9 +50,12 @@ namespace Ink_Canvas
         /// </summary>
         private bool IsInkStraightenAvailable()
         {
+            bool isInkInputMode = inkCanvas.EditingMode == InkCanvasEditingMode.Ink;
+            bool isMultiTouchInkInputMode = isInMultiTouchMode && inkCanvas.EditingMode == InkCanvasEditingMode.None;
+
             return Settings?.InkStraighten != null
                    && Settings.InkStraighten.IsInkStraightenEnabled
-                   && inkCanvas.EditingMode == InkCanvasEditingMode.Ink
+                   && (isInkInputMode || isMultiTouchInkInputMode)
                    && drawingShapeMode == 0
                    && !forceEraser;
         }
@@ -75,6 +79,43 @@ namespace Ink_Canvas
         }
 
         /// <summary>
+        /// 清理长时间未更新的拉直会话，避免输入链路异常中断时会话残留。
+        /// </summary>
+        private void CleanupStaleInkStraightenSessions()
+        {
+            if (_inkStraightenSessions.Count == 0)
+            {
+                return;
+            }
+
+            DateTime now = DateTime.UtcNow;
+            var stalePointerIds = _inkStraightenSessions
+                .Where(item => (now - item.Value.LastTimestamp) > InkStraightenSessionStaleTimeout)
+                .Select(item => item.Key)
+                .ToList();
+
+            foreach (var pointerId in stalePointerIds)
+            {
+                if (!_inkStraightenSessions.TryGetValue(pointerId, out var session))
+                {
+                    continue;
+                }
+
+                if (session.PreviewLine != null && Main_Grid.Children.Contains(session.PreviewLine))
+                {
+                    Main_Grid.Children.Remove(session.PreviewLine);
+                }
+
+                if (session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.None)
+                {
+                    inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
+                }
+
+                _inkStraightenSessions.Remove(pointerId);
+            }
+        }
+
+        /// <summary>
         /// 启动墨迹拉直会话。
         /// </summary>
         private void StartInkStraightenSession(int pointerId, Point startPoint)
@@ -84,6 +125,7 @@ namespace Ink_Canvas
                 return;
             }
 
+            CleanupStaleInkStraightenSessions();
             var now = DateTime.UtcNow;
             _inkStraightenSessions[pointerId] = new InkStraightenSession
             {
@@ -140,6 +182,7 @@ namespace Ink_Canvas
                         && (now - session.LowSpeedStartTimestamp).TotalMilliseconds >= ClampInkStraightenHoldDurationMs())
                     {
                         session.IsTriggered = true;
+                        HideMultiTouchRawStrokePreview(pointerId);
                         if (!session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.Ink)
                         {
                             inkCanvas.EditingMode = InkCanvasEditingMode.None;
@@ -164,6 +207,23 @@ namespace Ink_Canvas
 
             session.LastPoint = currentPoint;
             session.LastTimestamp = now;
+        }
+
+        /// <summary>
+        /// 在多指书写下触发拉直后，立即隐藏原始自由曲线预览。
+        /// </summary>
+        private void HideMultiTouchRawStrokePreview(int pointerId)
+        {
+            if (!isInMultiTouchMode)
+            {
+                return;
+            }
+
+            var visualCanvas = GetVisualCanvas(pointerId);
+            if (visualCanvas != null && inkCanvas.Children.Contains(visualCanvas))
+            {
+                inkCanvas.Children.Remove(visualCanvas);
+            }
         }
 
         /// <summary>
@@ -217,20 +277,30 @@ namespace Ink_Canvas
                 session.PreviewLine = null;
             }
 
+            // 多指书写下，触摸笔迹由 MainWindow_StylusUp 手动提交。
+            // 若此处提前提交直线，会与后续原始笔迹提交发生竞态，导致重复或闪烁。
+            // 这里不能依赖 EditingMode（多触点抬起过程中可能被其它手势逻辑临时切回 Ink）。
+            bool shouldDeferCommitToStrokeCollected = session.IsTriggered
+                                                      && isInMultiTouchMode
+                                                      && !session.IsInputSuppressed;
+
             if (session.IsTriggered)
             {
-                var straightStroke = new Stroke(new StylusPointCollection
+                if (!shouldDeferCommitToStrokeCollected)
                 {
-                    new StylusPoint(session.StartPoint.X, session.StartPoint.Y, 0.5f),
-                    new StylusPoint(session.LatestPoint.X, session.LatestPoint.Y, 0.5f)
-                })
-                {
-                    DrawingAttributes = inkCanvas.DefaultDrawingAttributes.Clone()
-                };
+                    var straightStroke = new Stroke(new StylusPointCollection
+                    {
+                        new StylusPoint(session.StartPoint.X, session.StartPoint.Y, 0.5f),
+                        new StylusPoint(session.LatestPoint.X, session.LatestPoint.Y, 0.5f)
+                    })
+                    {
+                        DrawingAttributes = inkCanvas.DefaultDrawingAttributes.Clone()
+                    };
 
-                _currentCommitType = CommitReason.UserInput;
-                inkCanvas.Strokes.Add(straightStroke);
-                session.IsCommitted = true;
+                    _currentCommitType = CommitReason.UserInput;
+                    inkCanvas.Strokes.Add(straightStroke);
+                    session.IsCommitted = true;
+                }
             }
 
             if (session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.None)
@@ -238,7 +308,10 @@ namespace Ink_Canvas
                 inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
             }
 
-            _inkStraightenSessions.Remove(pointerId);
+            if (!shouldDeferCommitToStrokeCollected)
+            {
+                _inkStraightenSessions.Remove(pointerId);
+            }
         }
 
         /// <summary>
@@ -302,6 +375,11 @@ namespace Ink_Canvas
                 _currentCommitType = previousReplaceCommitType;
             }
             matchedSession.IsCommitted = true;
+            var matchedSessionPair = _inkStraightenSessions.FirstOrDefault(item => ReferenceEquals(item.Value, matchedSession));
+            if (matchedSessionPair.Value != null)
+            {
+                _inkStraightenSessions.Remove(matchedSessionPair.Key);
+            }
             return true;
         }
 
@@ -347,9 +425,65 @@ namespace Ink_Canvas
             }
         }
 
+        /// <summary>
+        /// 在 StrokeCollected 阶段尝试应用延迟中的拉直会话。
+        /// </summary>
         private bool TryApplyPendingInkStraighten(Stroke rawStroke)
         {
             return TryApplyActiveInkStraighten(rawStroke);
+        }
+
+        /// <summary>
+        /// 针对多指书写延迟提交场景：在触点抬起时直接提交拉直笔迹，避免原始曲线闪现。
+        /// </summary>
+        /// <param name="pointerId">当前触点对应的指针 id。</param>
+        /// <param name="rawStroke">该触点采集到的原始笔迹（用于继承压感与画笔属性）。</param>
+        /// <returns>若成功直接提交拉直笔迹并完成会话清理则返回 true；否则返回 false。</returns>
+        private bool TryCommitDeferredInkStraightenByPointer(int pointerId, Stroke rawStroke)
+        {
+            if (!_inkStraightenSessions.TryGetValue(pointerId, out var session)
+                || !session.IsTriggered
+                || session.IsCommitted)
+            {
+                return false;
+            }
+
+            if (session.PreviewLine != null && Main_Grid.Children.Contains(session.PreviewLine))
+            {
+                Main_Grid.Children.Remove(session.PreviewLine);
+                session.PreviewLine = null;
+            }
+
+            float startPressure = rawStroke?.StylusPoints?.Count > 0 ? rawStroke.StylusPoints.First().PressureFactor : 0.5f;
+            float endPressure = rawStroke?.StylusPoints?.Count > 0 ? rawStroke.StylusPoints.Last().PressureFactor : 0.5f;
+            var straightStroke = new Stroke(new StylusPointCollection
+            {
+                new StylusPoint(session.StartPoint.X, session.StartPoint.Y, startPressure),
+                new StylusPoint(session.LatestPoint.X, session.LatestPoint.Y, endPressure)
+            })
+            {
+                DrawingAttributes = rawStroke?.DrawingAttributes?.Clone() ?? inkCanvas.DefaultDrawingAttributes.Clone()
+            };
+
+            SetNewBackupOfStroke();
+            var previousCommitType = _currentCommitType;
+            try
+            {
+                _currentCommitType = CommitReason.UserInput;
+                inkCanvas.Strokes.Add(straightStroke);
+            }
+            finally
+            {
+                _currentCommitType = previousCommitType;
+            }
+
+            session.IsCommitted = true;
+            if (session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.None)
+            {
+                inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
+            }
+            _inkStraightenSessions.Remove(pointerId);
+            return true;
         }
 
         private void Window_PreviewMouseUpForStraighten(object sender, MouseButtonEventArgs e)

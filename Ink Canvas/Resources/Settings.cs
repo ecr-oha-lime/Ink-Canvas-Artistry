@@ -284,7 +284,8 @@ namespace Ink_Canvas
             || IsAutoFoldInWxBoardMain
             || IsAutoFoldInOldZyBoard
             || IsAutoFoldInPPTSlideShow
-            || IsAutoFoldInMSWhiteboard;
+            || IsAutoFoldInMSWhiteboard
+            || !string.IsNullOrWhiteSpace(AutoFoldByForegroundExeNames);
 
         [JsonProperty("isAutoFoldInEasiNote")]
         public bool IsAutoFoldInEasiNote { get; set; } = false;
@@ -321,6 +322,9 @@ namespace Ink_Canvas
 
         [JsonProperty("isAutoFoldInPPTSlideShow")]
         public bool IsAutoFoldInPPTSlideShow { get; set; } = false;
+
+        [JsonProperty("autoFoldByForegroundExeNames")]
+        public string AutoFoldByForegroundExeNames { get; set; } = "";
 
         [JsonProperty("isAutoKillPptService")]
         public bool IsAutoKillPptService { get; set; } = false;
