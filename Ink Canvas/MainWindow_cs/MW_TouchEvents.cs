@@ -136,6 +136,8 @@ namespace Ink_Canvas
                         inkCanvas.Children.Remove(GetVisualCanvas(e.StylusDevice.Id));
                         if (!isCommittedByDeferredStraighten)
                         {
+                            // 未触发拉直时走原有收笔流程；
+                            // 若已由延迟拉直提交，则跳过以避免重复处理和闪烁。
                             inkCanvas_StrokeCollected(inkCanvas, new InkCanvasStrokeCollectedEventArgs(strokeVisual.Stroke));
                         }
                     }

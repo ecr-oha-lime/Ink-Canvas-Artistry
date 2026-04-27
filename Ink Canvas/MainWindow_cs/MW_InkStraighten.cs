@@ -238,6 +238,8 @@ namespace Ink_Canvas
                 session.PreviewLine = null;
             }
 
+            // 多指书写下，触摸笔迹由 MainWindow_StylusUp 手动提交。
+            // 若此处提前提交直线，会与后续原始笔迹提交发生竞态，导致重复或闪烁。
             bool shouldDeferCommitToStrokeCollected = session.IsTriggered
                                                       && isInMultiTouchMode
                                                       && inkCanvas.EditingMode == InkCanvasEditingMode.None;
@@ -383,6 +385,9 @@ namespace Ink_Canvas
             }
         }
 
+        /// <summary>
+        /// 在 StrokeCollected 阶段尝试应用延迟中的拉直会话。
+        /// </summary>
         private bool TryApplyPendingInkStraighten(Stroke rawStroke)
         {
             return TryApplyActiveInkStraighten(rawStroke);
@@ -391,6 +396,9 @@ namespace Ink_Canvas
         /// <summary>
         /// 针对多指书写延迟提交场景：在触点抬起时直接提交拉直笔迹，避免原始曲线闪现。
         /// </summary>
+        /// <param name="pointerId">当前触点对应的指针 id。</param>
+        /// <param name="rawStroke">该触点采集到的原始笔迹（用于继承压感与画笔属性）。</param>
+        /// <returns>若成功直接提交拉直笔迹并完成会话清理则返回 true；否则返回 false。</returns>
         private bool TryCommitDeferredInkStraightenByPointer(int pointerId, Stroke rawStroke)
         {
             if (!_inkStraightenSessions.TryGetValue(pointerId, out var session)
