@@ -279,9 +279,10 @@ namespace Ink_Canvas
 
             // 多指书写下，触摸笔迹由 MainWindow_StylusUp 手动提交。
             // 若此处提前提交直线，会与后续原始笔迹提交发生竞态，导致重复或闪烁。
+            // 这里不能依赖 EditingMode（多触点抬起过程中可能被其它手势逻辑临时切回 Ink）。
             bool shouldDeferCommitToStrokeCollected = session.IsTriggered
                                                       && isInMultiTouchMode
-                                                      && inkCanvas.EditingMode == InkCanvasEditingMode.None;
+                                                      && !session.IsInputSuppressed;
 
             if (session.IsTriggered)
             {
