@@ -339,6 +339,7 @@ namespace Ink_Canvas
 
             Visibility floatingBarVisibility = ViewboxFloatingBar.Visibility;
             ViewboxFloatingBar.Visibility = Visibility.Collapsed;
+            Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
 
             try
             {

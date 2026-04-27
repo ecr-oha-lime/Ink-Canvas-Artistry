@@ -360,14 +360,8 @@ namespace Ink_Canvas.Windows
         /// </summary>
         private Point MapUiPointToScreenshot(Point uiPoint)
         {
-            // 先将窗口内坐标转换为屏幕坐标，再映射到虚拟屏幕位图坐标
+            // PointToScreen 返回屏幕像素坐标，直接映射到虚拟屏幕位图坐标即可
             Point screenPoint = PointToScreen(uiPoint);
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
-            {
-                screenPoint = source.CompositionTarget.TransformToDevice.Transform(screenPoint);
-            }
-
             return new Point(screenPoint.X - _virtualScreenBounds.X, screenPoint.Y - _virtualScreenBounds.Y);
         }
 
