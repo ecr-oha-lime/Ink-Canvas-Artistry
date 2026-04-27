@@ -220,20 +220,27 @@ namespace Ink_Canvas
                 session.PreviewLine = null;
             }
 
+            bool shouldDeferCommitToStrokeCollected = session.IsTriggered
+                                                      && isInMultiTouchMode
+                                                      && inkCanvas.EditingMode == InkCanvasEditingMode.None;
+
             if (session.IsTriggered)
             {
-                var straightStroke = new Stroke(new StylusPointCollection
+                if (!shouldDeferCommitToStrokeCollected)
                 {
-                    new StylusPoint(session.StartPoint.X, session.StartPoint.Y, 0.5f),
-                    new StylusPoint(session.LatestPoint.X, session.LatestPoint.Y, 0.5f)
-                })
-                {
-                    DrawingAttributes = inkCanvas.DefaultDrawingAttributes.Clone()
-                };
+                    var straightStroke = new Stroke(new StylusPointCollection
+                    {
+                        new StylusPoint(session.StartPoint.X, session.StartPoint.Y, 0.5f),
+                        new StylusPoint(session.LatestPoint.X, session.LatestPoint.Y, 0.5f)
+                    })
+                    {
+                        DrawingAttributes = inkCanvas.DefaultDrawingAttributes.Clone()
+                    };
 
-                _currentCommitType = CommitReason.UserInput;
-                inkCanvas.Strokes.Add(straightStroke);
-                session.IsCommitted = true;
+                    _currentCommitType = CommitReason.UserInput;
+                    inkCanvas.Strokes.Add(straightStroke);
+                    session.IsCommitted = true;
+                }
             }
 
             if (session.IsInputSuppressed && inkCanvas.EditingMode == InkCanvasEditingMode.None)
@@ -241,7 +248,10 @@ namespace Ink_Canvas
                 inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
             }
 
-            _inkStraightenSessions.Remove(pointerId);
+            if (!shouldDeferCommitToStrokeCollected)
+            {
+                _inkStraightenSessions.Remove(pointerId);
+            }
         }
 
         /// <summary>
@@ -305,6 +315,11 @@ namespace Ink_Canvas
                 _currentCommitType = previousReplaceCommitType;
             }
             matchedSession.IsCommitted = true;
+            var matchedSessionPair = _inkStraightenSessions.FirstOrDefault(item => ReferenceEquals(item.Value, matchedSession));
+            if (matchedSessionPair.Value != null)
+            {
+                _inkStraightenSessions.Remove(matchedSessionPair.Key);
+            }
             return true;
         }
 
