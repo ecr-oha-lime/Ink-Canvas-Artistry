@@ -33,6 +33,7 @@ namespace Ink_Canvas.Windows
         private bool _isSelecting;
         private Point _startPoint;
         private readonly List<Point> _freehandPoints = new List<Point>();
+        private TouchDevice _activeTouchDevice;
 
         public SelectionScreenshotAction ActionResult { get; private set; } = SelectionScreenshotAction.Cancel;
         public Bitmap CapturedBitmap { get; private set; }
@@ -81,20 +82,33 @@ namespace Ink_Canvas.Windows
 
         private void RootGrid_TouchDown(object sender, TouchEventArgs e)
         {
+            // 仅跟踪第一个触点，避免多指同时触发导致选区状态错乱
+            if (_activeTouchDevice != null)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            _activeTouchDevice = e.TouchDevice;
+            RootGrid.CaptureTouch(_activeTouchDevice);
             BeginSelection(e.GetTouchPoint(RootGrid).Position);
             e.Handled = true;
         }
 
         private void RootGrid_TouchMove(object sender, TouchEventArgs e)
         {
-            if (!_isSelecting) return;
+            if (_activeTouchDevice == null || e.TouchDevice.Id != _activeTouchDevice.Id || !_isSelecting) return;
             UpdateSelection(e.GetTouchPoint(RootGrid).Position);
             e.Handled = true;
         }
 
         private void RootGrid_TouchUp(object sender, TouchEventArgs e)
         {
+            if (_activeTouchDevice == null || e.TouchDevice.Id != _activeTouchDevice.Id) return;
+
             EndSelection();
+            RootGrid.ReleaseTouchCapture(_activeTouchDevice);
+            _activeTouchDevice = null;
             e.Handled = true;
         }
 
