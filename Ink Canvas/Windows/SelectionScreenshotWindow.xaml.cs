@@ -89,8 +89,16 @@ namespace Ink_Canvas.Windows
                 return;
             }
 
-            _activeTouchDevice = e.TouchDevice;
-            RootGrid.CaptureTouch(_activeTouchDevice);
+            // 先尝试捕获触点，捕获失败时不进入选择态，避免触摸状态卡死
+            var touchDevice = e.TouchDevice;
+            bool captured = RootGrid.CaptureTouch(touchDevice);
+            if (!captured)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            _activeTouchDevice = touchDevice;
             BeginSelection(e.GetTouchPoint(RootGrid).Position);
             e.Handled = true;
         }
