@@ -72,20 +72,31 @@ namespace Ink_Canvas.Windows
 
         private void RootGrid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsMouseEventFromTouch(e)) return;
+
             BeginSelection(e.GetPosition(RootGrid));
             RootGrid.CaptureMouse();
         }
 
         private void RootGrid_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!_isSelecting) return;
+            if (IsMouseEventFromTouch(e) || !_isSelecting) return;
             UpdateSelection(e.GetPosition(RootGrid));
         }
 
         private void RootGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (IsMouseEventFromTouch(e)) return;
+
             EndSelection();
             RootGrid.ReleaseMouseCapture();
+        }
+
+
+        private static bool IsMouseEventFromTouch(MouseEventArgs e)
+        {
+            // 触摸会在 WPF 中提升为鼠标事件，过滤掉这类事件可避免同一次拖拽被重复处理导致闪烁
+            return e.StylusDevice?.TabletDevice?.Type == TabletDeviceType.Touch;
         }
 
         private void RootGrid_TouchDown(object sender, TouchEventArgs e)
