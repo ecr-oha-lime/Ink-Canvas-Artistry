@@ -12,7 +12,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         WindowState="Maximized">
-    <Grid x:Name="RootGrid" Background="#66000000" MouseLeftButtonDown="RootGrid_MouseLeftButtonDown" MouseMove="RootGrid_MouseMove" MouseLeftButtonUp="RootGrid_MouseLeftButtonUp" TouchDown="RootGrid_TouchDown" TouchMove="RootGrid_TouchMove" TouchUp="RootGrid_TouchUp">
+    <Grid x:Name="RootGrid" Background="#66000000" MouseLeftButtonDown="RootGrid_MouseLeftButtonDown" MouseMove="RootGrid_MouseMove" MouseLeftButtonUp="RootGrid_MouseLeftButtonUp" TouchDown="RootGrid_TouchDown" TouchMove="RootGrid_TouchMove" TouchUp="RootGrid_TouchUp" LostTouchCapture="RootGrid_LostTouchCapture">
         <Canvas x:Name="SelectionCanvas">
             <Path x:Name="SelectionPath" Stroke="#FF2D7DFF" StrokeThickness="2" Fill="#3D2D7DFF" Visibility="Collapsed" />
             <Rectangle x:Name="SelectionRect" Stroke="#FF2D7DFF" StrokeThickness="2" Fill="#3D2D7DFF" Visibility="Collapsed" />

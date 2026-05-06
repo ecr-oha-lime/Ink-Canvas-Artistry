@@ -52,11 +52,19 @@ namespace Ink_Canvas.Windows
         }
 
 
+        protected override void OnDeactivated(EventArgs e)
+        {
+            // 窗口失焦时兜底清理触摸捕获，避免系统手势打断后触摸锁死
+            ClearActiveTouchCapture();
+            base.OnDeactivated(e);
+        }
+
         /// <summary>
         /// 窗口关闭时兜底恢复“隐藏墨迹”预览状态并释放资源。
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
+            ClearActiveTouchCapture();
             _hideInkPreviewChanged?.Invoke(false);
             _fullScreenshot?.Dispose();
             base.OnClosed(e);
@@ -122,11 +130,30 @@ namespace Ink_Canvas.Windows
             if (_activeTouchDevice == null || e.TouchDevice.Id != _activeTouchDevice.Id) return;
 
             EndSelection();
-            RootGrid.ReleaseTouchCapture(_activeTouchDevice);
+            ClearActiveTouchCapture();
+            e.Handled = true;
+        }
+
+        private void RootGrid_LostTouchCapture(object sender, TouchEventArgs e)
+        {
+            if (_activeTouchDevice == null || e.TouchDevice.Id != _activeTouchDevice.Id) return;
+
+            // 触摸捕获被系统或其他控件转移时，及时解锁活动触点
+            _isSelecting = false;
             _activeTouchDevice = null;
             e.Handled = true;
         }
 
+        private void ClearActiveTouchCapture()
+        {
+            if (_activeTouchDevice == null) return;
+
+            if (RootGrid.AreAnyTouchesCaptured)
+            {
+                RootGrid.ReleaseTouchCapture(_activeTouchDevice);
+            }
+            _activeTouchDevice = null;
+        }
 
         private bool IsTouchOnToolbar(Point rootGridPoint)
         {
