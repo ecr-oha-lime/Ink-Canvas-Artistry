@@ -18,7 +18,7 @@
             <Rectangle x:Name="SelectionRect" Stroke="#FF2D7DFF" StrokeThickness="2" Fill="#3D2D7DFF" Visibility="Collapsed" />
         </Canvas>
 
-        <Border HorizontalAlignment="Center"
+        <Border x:Name="HintBorder" HorizontalAlignment="Center"
                 VerticalAlignment="Top"
                 Margin="0,28,0,0"
                 Background="#88000000"
@@ -31,7 +31,7 @@
                        Opacity="0.95" />
         </Border>
 
-        <Border HorizontalAlignment="Center"
+        <Border x:Name="ToolbarBorder" HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
                 Margin="0,0,0,24"
                 Background="#B3202020"

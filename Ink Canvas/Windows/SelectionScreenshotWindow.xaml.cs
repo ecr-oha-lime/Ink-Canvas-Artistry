@@ -89,6 +89,13 @@ namespace Ink_Canvas.Windows
                 return;
             }
 
+            var touchPoint = e.GetTouchPoint(RootGrid).Position;
+            // 工具栏区域交给按钮自己处理，避免触摸被选区逻辑抢占后按钮无法点击
+            if (IsTouchOnToolbar(touchPoint))
+            {
+                return;
+            }
+
             // 先尝试捕获触点，捕获失败时不进入选择态，避免触摸状态卡死
             var touchDevice = e.TouchDevice;
             bool captured = RootGrid.CaptureTouch(touchDevice);
@@ -99,7 +106,7 @@ namespace Ink_Canvas.Windows
             }
 
             _activeTouchDevice = touchDevice;
-            BeginSelection(e.GetTouchPoint(RootGrid).Position);
+            BeginSelection(touchPoint);
             e.Handled = true;
         }
 
@@ -120,6 +127,15 @@ namespace Ink_Canvas.Windows
             e.Handled = true;
         }
 
+
+        private bool IsTouchOnToolbar(Point rootGridPoint)
+        {
+            if (ToolbarBorder == null || !ToolbarBorder.IsVisible) return false;
+
+            Point toolbarTopLeft = ToolbarBorder.TranslatePoint(new Point(0, 0), RootGrid);
+            var rect = new Rect(toolbarTopLeft, new Size(ToolbarBorder.ActualWidth, ToolbarBorder.ActualHeight));
+            return rect.Contains(rootGridPoint);
+        }
         private void BeginSelection(Point pos)
         {
             _isSelecting = true;
