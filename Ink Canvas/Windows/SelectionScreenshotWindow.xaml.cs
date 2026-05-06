@@ -133,7 +133,7 @@ namespace Ink_Canvas.Windows
             if (ToolbarBorder == null || !ToolbarBorder.IsVisible) return false;
 
             Point toolbarTopLeft = ToolbarBorder.TranslatePoint(new Point(0, 0), RootGrid);
-            var rect = new Rect(toolbarTopLeft, new Size(ToolbarBorder.ActualWidth, ToolbarBorder.ActualHeight));
+            var rect = new Rect(toolbarTopLeft, new System.Windows.Size(ToolbarBorder.ActualWidth, ToolbarBorder.ActualHeight));
             return rect.Contains(rootGridPoint);
         }
         private void BeginSelection(Point pos)
