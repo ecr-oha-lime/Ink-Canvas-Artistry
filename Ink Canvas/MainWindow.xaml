@@ -43,7 +43,6 @@
                 <Setter Property="BorderBrush" Value="{DynamicResource BoardBarBorderBrush}" />
                 <Setter Property="Background" Value="{DynamicResource BoardBarBackground}" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="ClipToBounds" Value="True" />
             </Style>
             <Style x:Key="BoardToolbarGroupPanelStyle" TargetType="ikw:SimpleStackPanel">
                 <Setter Property="Orientation" Value="Horizontal" />
@@ -61,7 +60,6 @@
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
                 <Setter Property="Foreground" Value="{DynamicResource BoardBarForeground}" />
-                <Setter Property="Tag" Value="0" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
@@ -70,7 +68,7 @@
                                 <Border
                                     x:Name="InteractionOverlay"
                                     Background="Transparent"
-                                    CornerRadius="{TemplateBinding Tag}"
+                                    CornerRadius="0"
                                     IsHitTestVisible="False" />
                             </Grid>
                             <ControlTemplate.Triggers>
@@ -1016,7 +1014,6 @@
                         <!--  定义按钮样式  -->
                         <Style TargetType="Button">
                             <Setter Property="Background" Value="{StaticResource {x:Static ui:ThemeKeys.ButtonBackgroundKey}}" />
-                            <Setter Property="Tag" Value="5" />
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="Button">
@@ -1024,7 +1021,7 @@
                                             Background="{TemplateBinding Background}"
                                             BorderBrush="{TemplateBinding BorderBrush}"
                                             BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="{TemplateBinding Tag}">
+                                            CornerRadius="5">
                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -1047,7 +1044,6 @@
                             Height="55"
                             Padding="0"
                             BorderThickness="0"
-                            Tag="3,0,0,3"
                             Click="BtnWhiteBoardSwitchPrevious_Click"
                             IsEnabledChanged="Element_IsEnabledChanged">
                             <Border
@@ -1178,7 +1174,6 @@
                         <!--  定义按钮样式  -->
                         <Style TargetType="Button">
                             <Setter Property="Background" Value="{StaticResource {x:Static ui:ThemeKeys.ButtonBackgroundKey}}" />
-                            <Setter Property="Tag" Value="5" />
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="Button">
@@ -1186,7 +1181,7 @@
                                             Background="{TemplateBinding Background}"
                                             BorderBrush="{TemplateBinding BorderBrush}"
                                             BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="{TemplateBinding Tag}">
+                                            CornerRadius="0">
                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -1215,7 +1210,6 @@
                             Padding="0"
                             Background="Transparent"
                             BorderThickness="0"
-                            Tag="5,0,0,5"
                             Click="TwoFingerGestureBorder_Click">
                             <Border
                                 x:Name="BoardGestureBorder"
@@ -1223,8 +1217,7 @@
                                 Height="55"
                                 Background="{DynamicResource BoardBarBackground}"
                                 BorderBrush="{DynamicResource BoardBarBorderBrush}"
-                                BorderThickness="0"
-                                CornerRadius="5,0,0,5">
+                                BorderThickness="0">
                                 <Grid Style="{StaticResource BoardToolbarIconTextContentStyle}">
                                     <ui:FontIcon
                                         Style="{StaticResource BoardToolbarIconStyle}"
@@ -1399,7 +1392,6 @@
                                 <Button
                             x:Name="BtnBoardCanvas"
                             Style="{StaticResource BoardToolbarGroupButtonStyle}"
-                            Tag="0,5,5,0"
                             Click="BoardChangeBackgroundColorBtn_Click">
                             <Border
                                 x:Name="BoardCanvasBorder"
@@ -1407,8 +1399,7 @@
                                 Height="55"
                                 Background="{DynamicResource BoardBarBackground}"
                                 BorderBrush="{DynamicResource BoardBarBorderBrush}"
-                                BorderThickness="0"
-                                CornerRadius="0,5,5,0">
+                                BorderThickness="0">
                                 <Grid Style="{StaticResource BoardToolbarIconTextContentStyle}">
                                     <ui:FontIcon
                                         Style="{StaticResource BoardToolbarIconStyle}"
@@ -3121,7 +3112,7 @@
                                             Background="{TemplateBinding Background}"
                                             BorderBrush="{TemplateBinding BorderBrush}"
                                             BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="{TemplateBinding Tag}">
+                                            CornerRadius="5">
                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -3144,7 +3135,6 @@
                             Margin="0,0,5,0"
                             Padding="0"
                             BorderThickness="0"
-                            Tag="3"
                             Click="BtnWhiteBoardAdd_Click">
                             <Border
                                 Width="55"
@@ -3181,7 +3171,6 @@
                             Height="55"
                             Padding="0"
                             BorderThickness="0"
-                            Tag="3,0,0,3"
                             Click="BtnWhiteBoardSwitchPrevious_Click"
                             IsEnabled="{Binding ElementName=BtnWhiteBoardSwitchPrevious, Path=IsEnabled}"
                             Opacity="{Binding ElementName=BtnWhiteBoardSwitchPrevious, Path=Opacity}">
@@ -3191,7 +3180,7 @@
                                 Background="{DynamicResource BoardBarBackground}"
                                 BorderBrush="{DynamicResource BoardBarBorderBrush}"
                                 BorderThickness="2,2,0.25,2"
-                                CornerRadius="5,0,0,5">
+                                CornerRadius="3,0,0,3">
                                 <Grid Margin="5">
                                     <ui:FontIcon
                                         Width="26"
@@ -3241,7 +3230,6 @@
                             Height="55"
                             Padding="0"
                             BorderThickness="0"
-                            Tag="0,5,5,0"
                             Click="BtnWhiteBoardSwitchNext_Click">
                             <Border
                                 Width="60"
