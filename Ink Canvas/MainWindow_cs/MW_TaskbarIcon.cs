@@ -70,11 +70,11 @@ namespace Ink_Canvas
         /// <summary>
         /// 加载托盘图标：优先使用当前可执行文件关联图标，确保与软件图标保持一致。
         /// </summary>
-        private Icon LoadTaskbarIcon()
+        private System.Drawing.Icon LoadTaskbarIcon()
         {
             try
             {
-                Icon executableIcon = Icon.ExtractAssociatedIcon(Forms.Application.ExecutablePath);
+                System.Drawing.Icon executableIcon = System.Drawing.Icon.ExtractAssociatedIcon(Forms.Application.ExecutablePath);
                 if (executableIcon != null)
                 {
                     return executableIcon;
