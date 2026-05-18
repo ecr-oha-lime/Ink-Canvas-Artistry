@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
-using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Ink_Canvas
 {
@@ -17,6 +17,11 @@ namespace Ink_Canvas
         /// Process-wide mutex used to ensure a single app instance by default.
         /// </summary>
         System.Threading.Mutex mutex;
+
+        /// <summary>
+        /// Named event used to notify the running instance to enter whiteboard mode.
+        /// </summary>
+        private EventWaitHandle switchToWhiteboardEvent;
 
         /// <summary>
         /// Startup arguments captured during application initialization.
@@ -66,49 +71,35 @@ namespace Ink_Canvas
             if (!ret && !e.Args.Contains("-m")) //-m multiple
             {
                 LogHelper.NewLog("Detected existing instance; requesting whiteboard activation");
-                TriggerExistingInstanceToWhiteboard();
+                using (var existingInstanceSignal = EventWaitHandle.OpenExisting("Ink_Canvas_Artistry_SwitchToWhiteboard"))
+                {
+                    existingInstanceSignal.Set();
+                }
                 LogHelper.NewLog("Ink Canvas automatically closed");
                 Environment.Exit(0);
             }
 
+            RegisterWhiteboardSwitchSignal();
             StartArgs = e.Args;
         }
 
         /// <summary>
-        /// 通过模拟 <c>Alt + B</c> 全局快捷键，通知已运行实例切换到白板模式。
+        /// 注册跨进程白板切换信号监听，使后续启动的实例可唤起当前实例进入白板模式。
         /// </summary>
-        /// <remarks>
-        /// 该方法仅在检测到已有实例时调用，用于替代“已有一个程序实例正在运行”的提示。
-        /// Alt+B 对应已注册的全局快捷键 <c>HotKey_Board</c>，其行为是进入白板而非屏幕批注模式。
-        /// </remarks>
-        private void TriggerExistingInstanceToWhiteboard()
+        private void RegisterWhiteboardSwitchSignal()
         {
-            const byte VK_MENU = 0x12;
-            const byte VK_B = 0x42;
-            const uint KEYEVENTF_KEYUP = 0x0002;
-
-            try
+            switchToWhiteboardEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "Ink_Canvas_Artistry_SwitchToWhiteboard");
+            ThreadPool.RegisterWaitForSingleObject(switchToWhiteboardEvent, (_, __) =>
             {
-                keybd_event(VK_MENU, 0, 0, 0);
-                keybd_event(VK_B, 0, 0, 0);
-                keybd_event(VK_B, 0, KEYEVENTF_KEYUP, 0);
-                keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
-            }
-            catch (Exception ex)
-            {
-                LogHelper.NewLog($"Failed to notify existing instance to switch whiteboard mode: {ex}");
-            }
+                Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (Current?.MainWindow is MainWindow mainWindow)
+                    {
+                        mainWindow.EnsureWhiteboardModeFromExternalRequest();
+                    }
+                }));
+            }, null, -1, false);
         }
-
-        /// <summary>
-        /// 触发单个虚拟键按下/抬起事件。
-        /// </summary>
-        /// <param name="bVk">虚拟键码。</param>
-        /// <param name="bScan">硬件扫描码（此处固定传 0）。</param>
-        /// <param name="dwFlags">事件标记，抬起时传 <c>0x0002</c>。</param>
-        /// <param name="dwExtraInfo">附加信息指针（此处固定传 0）。</param>
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
         /// <summary>
         /// Applies custom mouse-wheel scrolling behavior for wrapped <see cref="ScrollViewerEx"/> controls.

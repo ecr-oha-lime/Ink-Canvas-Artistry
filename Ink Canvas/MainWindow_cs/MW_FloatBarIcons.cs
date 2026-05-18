@@ -397,6 +397,21 @@ namespace Ink_Canvas
             }
         }
 
+        /// <summary>
+        /// 响应外部实例唤起请求，确保当前实例进入白板模式而非执行模式切换。
+        /// </summary>
+        /// <remarks>
+        /// 仅当当前处于桌面批注（<c>currentMode == 0</c>）时才调用 <see cref="ImageBlackboard_Click"/> 进入白板，
+        /// 避免在已处于白板模式时被误切回桌面批注。
+        /// </remarks>
+        public void EnsureWhiteboardModeFromExternalRequest()
+        {
+            if (currentMode == 0)
+            {
+                ImageBlackboard_Click(null, null);
+            }
+        }
+
         bool isDisplayingOrHidingBlackboard = false;
         private void ImageBlackboard_Click(object sender, RoutedEventArgs e)
         {
