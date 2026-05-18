@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
-using MessageBox = System.Windows.MessageBox;
+using System.Runtime.InteropServices;
 
 namespace Ink_Canvas
 {
@@ -65,14 +65,50 @@ namespace Ink_Canvas
 
             if (!ret && !e.Args.Contains("-m")) //-m multiple
             {
-                LogHelper.NewLog("Detected existing instance");
-                MessageBox.Show("已有一个程序实例正在运行");
+                LogHelper.NewLog("Detected existing instance; requesting whiteboard activation");
+                TriggerExistingInstanceToWhiteboard();
                 LogHelper.NewLog("Ink Canvas automatically closed");
                 Environment.Exit(0);
             }
 
             StartArgs = e.Args;
         }
+
+        /// <summary>
+        /// 通过模拟 <c>Alt + B</c> 全局快捷键，通知已运行实例切换到白板模式。
+        /// </summary>
+        /// <remarks>
+        /// 该方法仅在检测到已有实例时调用，用于替代“已有一个程序实例正在运行”的提示。
+        /// Alt+B 对应已注册的全局快捷键 <c>HotKey_Board</c>，其行为是进入白板而非屏幕批注模式。
+        /// </remarks>
+        private void TriggerExistingInstanceToWhiteboard()
+        {
+            const byte VK_MENU = 0x12;
+            const byte VK_B = 0x42;
+            const uint KEYEVENTF_KEYUP = 0x0002;
+
+            try
+            {
+                keybd_event(VK_MENU, 0, 0, 0);
+                keybd_event(VK_B, 0, 0, 0);
+                keybd_event(VK_B, 0, KEYEVENTF_KEYUP, 0);
+                keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.NewLog($"Failed to notify existing instance to switch whiteboard mode: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// 触发单个虚拟键按下/抬起事件。
+        /// </summary>
+        /// <param name="bVk">虚拟键码。</param>
+        /// <param name="bScan">硬件扫描码（此处固定传 0）。</param>
+        /// <param name="dwFlags">事件标记，抬起时传 <c>0x0002</c>。</param>
+        /// <param name="dwExtraInfo">附加信息指针（此处固定传 0）。</param>
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
         /// <summary>
         /// Applies custom mouse-wheel scrolling behavior for wrapped <see cref="ScrollViewerEx"/> controls.
