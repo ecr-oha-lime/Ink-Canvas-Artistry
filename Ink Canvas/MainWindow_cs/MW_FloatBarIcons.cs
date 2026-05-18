@@ -979,7 +979,21 @@ namespace Ink_Canvas
             HideSubPanels();
         }
 
-        #region Left Side Panel
+        
+        /// <summary>
+        /// 将 FloatingBar 位置重置为底部居中，并清除场景化位置缓存。
+        /// </summary>
+        internal void ResetFloatingBarPosition()
+        {
+            pointDesktop = new Point(-1, -1);
+            pointPPT = new Point(-1, -1);
+            pos = new Point((SystemParameters.WorkArea.Width - ViewboxFloatingBar.ActualWidth * ViewboxFloatingBarScaleTransform.ScaleX) / 2,
+                SystemParameters.WorkArea.Height - Settings.Appearance.FloatingBarBottomMargin * (Settings.Appearance.FloatingBarScale / 100));
+            ViewboxFloatingBarMarginAnimation();
+            ShowNewMessage("FloatingBar 显示位置已重置", false);
+        }
+
+#region Left Side Panel
 
         private void BtnFingerDragMode_Click(object sender, RoutedEventArgs e)
         {

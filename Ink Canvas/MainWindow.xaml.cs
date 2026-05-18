@@ -204,6 +204,7 @@ namespace Ink_Canvas
             LogHelper.WriteLogToFile("Ink Canvas Loaded", LogHelper.LogType.Event);
             isLoaded = true;
             RegisterGlobalHotkeys();
+            InitializeTaskbarIcon();
         }
 
         /// <summary>
@@ -237,6 +238,7 @@ namespace Ink_Canvas
         /// </summary>
         private void Window_Closed(object sender, EventArgs e)
         {
+            DisposeTaskbarIcon();
             CloseMagnifierWindow();
             LogHelper.WriteLogToFile("Ink Canvas closed", LogHelper.LogType.Event);
         }
