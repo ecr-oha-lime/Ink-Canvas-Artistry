@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
-using MessageBox = System.Windows.MessageBox;
+using System.Threading;
 
 namespace Ink_Canvas
 {
@@ -17,6 +17,11 @@ namespace Ink_Canvas
         /// Process-wide mutex used to ensure a single app instance by default.
         /// </summary>
         System.Threading.Mutex mutex;
+
+        /// <summary>
+        /// Named event used to notify the running instance to enter whiteboard mode.
+        /// </summary>
+        private EventWaitHandle switchToWhiteboardEvent;
 
         /// <summary>
         /// Startup arguments captured during application initialization.
@@ -65,13 +70,35 @@ namespace Ink_Canvas
 
             if (!ret && !e.Args.Contains("-m")) //-m multiple
             {
-                LogHelper.NewLog("Detected existing instance");
-                MessageBox.Show("已有一个程序实例正在运行");
+                LogHelper.NewLog("Detected existing instance; requesting whiteboard activation");
+                using (var existingInstanceSignal = EventWaitHandle.OpenExisting("Ink_Canvas_Artistry_SwitchToWhiteboard"))
+                {
+                    existingInstanceSignal.Set();
+                }
                 LogHelper.NewLog("Ink Canvas automatically closed");
                 Environment.Exit(0);
             }
 
+            RegisterWhiteboardSwitchSignal();
             StartArgs = e.Args;
+        }
+
+        /// <summary>
+        /// 注册跨进程白板切换信号监听，使后续启动的实例可唤起当前实例进入白板模式。
+        /// </summary>
+        private void RegisterWhiteboardSwitchSignal()
+        {
+            switchToWhiteboardEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "Ink_Canvas_Artistry_SwitchToWhiteboard");
+            ThreadPool.RegisterWaitForSingleObject(switchToWhiteboardEvent, (_, __) =>
+            {
+                Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (Current?.MainWindow is MainWindow mainWindow)
+                    {
+                        mainWindow.EnsureWhiteboardModeFromExternalRequest();
+                    }
+                }));
+            }, null, -1, false);
         }
 
         /// <summary>
