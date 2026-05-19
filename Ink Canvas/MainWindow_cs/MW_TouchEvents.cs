@@ -97,7 +97,8 @@ namespace Ink_Canvas
         /// </summary>
         private void MainWindow_StylusDown(object sender, StylusDownEventArgs e)
         {
-            isLastInputFromTouch = false;
+            // Stylus 事件也可能来自触摸屏，需按实际设备类型判断
+            isLastInputFromTouch = e.StylusDevice.TabletDevice.Type == TabletDeviceType.Touch;
             UpdateAreaEraserCursorVisibility();
             if (inkCanvas.EditingMode == InkCanvasEditingMode.EraseByPoint
                 || inkCanvas.EditingMode == InkCanvasEditingMode.EraseByStroke
@@ -172,7 +173,8 @@ namespace Ink_Canvas
         /// </summary>
         private void MainWindow_StylusMove(object sender, StylusEventArgs e)
         {
-            isLastInputFromTouch = false;
+            // Stylus 事件也可能来自触摸屏，需按实际设备类型判断
+            isLastInputFromTouch = e.StylusDevice.TabletDevice.Type == TabletDeviceType.Touch;
             UpdateAreaEraserCursorVisibility();
             try
             {
