@@ -97,6 +97,8 @@ namespace Ink_Canvas
         /// </summary>
         private void MainWindow_StylusDown(object sender, StylusDownEventArgs e)
         {
+            isLastInputFromTouch = false;
+            UpdateAreaEraserCursorVisibility();
             if (inkCanvas.EditingMode == InkCanvasEditingMode.EraseByPoint
                 || inkCanvas.EditingMode == InkCanvasEditingMode.EraseByStroke
                 || inkCanvas.EditingMode == InkCanvasEditingMode.Select) return;
@@ -170,6 +172,8 @@ namespace Ink_Canvas
         /// </summary>
         private void MainWindow_StylusMove(object sender, StylusEventArgs e)
         {
+            isLastInputFromTouch = false;
+            UpdateAreaEraserCursorVisibility();
             try
             {
                 if (GetTouchDownPointsList(e.StylusDevice.Id) != InkCanvasEditingMode.None) return;
@@ -253,9 +257,12 @@ namespace Ink_Canvas
         Point iniP = new Point(0, 0);
         bool isLastTouchEraser = false;
         private bool forcePointEraser = true;
+        // 记录最近一次操作是否来自触摸设备，用于控制面积擦橡皮块显隐
+        private bool isLastInputFromTouch = false;
 
         private void Main_Grid_TouchDown(object sender, TouchEventArgs e)
         {
+            isLastInputFromTouch = true;
             if (!isHidingSubPanelsWhenInking)
             {
                 isHidingSubPanelsWhenInking = true;
@@ -284,6 +291,7 @@ namespace Ink_Canvas
                     if (Settings.Advanced.IsSpecialScreen) boundsWidth *= Settings.Advanced.TouchMultiplier;
                     inkCanvas.EraserShape = new EllipseStylusShape(boundsWidth, boundsWidth);
                     inkCanvas.EditingMode = InkCanvasEditingMode.EraseByPoint;
+                    UpdateAreaEraserCursorVisibility();
                 }
                 else
                 {
@@ -297,6 +305,7 @@ namespace Ink_Canvas
                     {
                         inkCanvas.EraserShape = new EllipseStylusShape(5, 5);
                         inkCanvas.EditingMode = InkCanvasEditingMode.EraseByStroke;
+                        UpdateAreaEraserCursorVisibility();
                     }
                 }
             }
@@ -306,7 +315,18 @@ namespace Ink_Canvas
                 inkCanvas.EraserShape = forcePointEraser ? new EllipseStylusShape(50, 50) : new EllipseStylusShape(5, 5);
                 if (forceEraser) return;
                 inkCanvas.EditingMode = InkCanvasEditingMode.Ink;
+                UpdateAreaEraserCursorVisibility();
             }
+        }
+
+        /// <summary>
+        /// 根据当前输入设备和触点数量，控制面积擦橡皮块是否隐藏。
+        /// </summary>
+        private void UpdateAreaEraserCursorVisibility()
+        {
+            bool isAreaEraserMode = inkCanvas.EditingMode == InkCanvasEditingMode.EraseByPoint;
+            bool shouldHide = isLastInputFromTouch && isAreaEraserMode && dec.Count == 0;
+            inkCanvas.Cursor = shouldHide ? Cursors.None : Cursors.Pen;
         }
 
         public double GetTouchBoundWidth(TouchEventArgs e)
@@ -326,7 +346,9 @@ namespace Ink_Canvas
 
         private void inkCanvas_PreviewTouchDown(object sender, TouchEventArgs e)
         {
+            isLastInputFromTouch = true;
             dec.Add(e.TouchDevice.Id);
+            UpdateAreaEraserCursorVisibility();
             //设备1个的时候，记录中心点
             if (dec.Count == 1)
             {
@@ -359,6 +381,7 @@ namespace Ink_Canvas
                 }
             }
             dec.Remove(e.TouchDevice.Id);
+            UpdateAreaEraserCursorVisibility();
             inkCanvas.Opacity = 1;
             if (dec.Count == 0)
             {
