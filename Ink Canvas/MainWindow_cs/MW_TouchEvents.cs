@@ -261,6 +261,10 @@ namespace Ink_Canvas
         private bool forcePointEraser = true;
         // 记录最近一次操作是否来自触摸设备，用于控制面积擦橡皮块显隐
         private bool isLastInputFromTouch = false;
+        // 当触屏面积擦抬手后，用极小橡皮形状实现“隐藏橡皮块”
+        private readonly StylusShape hiddenAreaEraserShape = new EllipseStylusShape(0.1, 0.1);
+        // 缓存最近一次可见的面积擦橡皮形状，恢复显示时使用
+        private StylusShape lastVisibleAreaEraserShape = new EllipseStylusShape(50, 50);
 
         private void Main_Grid_TouchDown(object sender, TouchEventArgs e)
         {
@@ -328,7 +332,19 @@ namespace Ink_Canvas
         {
             bool isAreaEraserMode = inkCanvas.EditingMode == InkCanvasEditingMode.EraseByPoint;
             bool shouldHide = isLastInputFromTouch && isAreaEraserMode && dec.Count == 0;
-            inkCanvas.Cursor = shouldHide ? Cursors.None : Cursors.Pen;
+            // 仅改光标在部分设备/驱动上不会影响面积擦预览块，这里同步改橡皮形状来确保“隐藏”生效
+            if (shouldHide)
+            {
+                if (inkCanvas.EraserShape != null && inkCanvas.EraserShape != hiddenAreaEraserShape)
+                {
+                    lastVisibleAreaEraserShape = inkCanvas.EraserShape;
+                }
+                inkCanvas.EraserShape = hiddenAreaEraserShape;
+            }
+            else if (isAreaEraserMode && inkCanvas.EraserShape == hiddenAreaEraserShape)
+            {
+                inkCanvas.EraserShape = lastVisibleAreaEraserShape;
+            }
         }
 
         public double GetTouchBoundWidth(TouchEventArgs e)
