@@ -362,8 +362,6 @@ namespace Ink_Canvas
             inkCanvas.Opacity = 1;
             if (dec.Count == 0)
             {
-                RestoreEditingModeAfterTouchInteraction();
-
                 // 双指手势结束后立即提交变换历史，避免切页时遗漏本次位移/缩放结果
                 ToCommitStrokeManipulationHistoryAfterMouseUp();
 
@@ -379,25 +377,6 @@ namespace Ink_Canvas
                     lastTouchDownStrokeCollection = inkCanvas.Strokes.Clone();
                     strokeCollections[whiteboardIndex] = lastTouchDownStrokeCollection;
                 }
-            }
-        }
-
-        /// <summary>
-        /// 在触屏触点全部抬起后恢复编辑模式，以便面积擦光标仅在触摸拖动期间显示。
-        /// </summary>
-        /// <remarks>
-        /// 鼠标与手写笔设备存在悬浮/未按下状态，橡皮模式下需要持续显示橡皮光标；
-        /// 触摸设备没有悬浮语义，因此在无活动触点时切回非擦除模式，避免圆形面积擦残留显示。
-        /// 下次触摸按下时会在 <see cref="Main_Grid_TouchDown"/> 中按触控面积重新进入擦除模式。
-        /// </remarks>
-        private void RestoreEditingModeAfterTouchInteraction()
-        {
-            if (isInMultiTouchMode) return;
-
-            if (inkCanvas.EditingMode == InkCanvasEditingMode.EraseByPoint
-                || inkCanvas.EditingMode == InkCanvasEditingMode.EraseByStroke)
-            {
-                inkCanvas.EditingMode = forceEraser ? InkCanvasEditingMode.None : InkCanvasEditingMode.Ink;
             }
         }
         private void inkCanvas_ManipulationStarting(object sender, ManipulationStartingEventArgs e)
